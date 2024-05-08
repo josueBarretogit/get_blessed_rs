@@ -7,3 +7,10 @@ edition = "2021"
 reqwest = "0.12.4"
 tokio = { version = "1", features = ["full"] }
 scraper = "0.19.0"
+ratatui = { version = "0.26.2", features = ["all-widgets"] }
+color-eyre = "0.6.2"
+crossterm = { version = "0.27.0", features = ["event-stream"] }
+serde = { version = "1.0.200", features = ["derive"] }
+serde_json = "1.0.116"
+tokio-util = "0.7.9"
+futures = "0.3.28"

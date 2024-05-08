@@ -1,15 +1,19 @@
-use  view::crate_category::*;
+use tui::tui::{init, restore};
+use view::{crate_category::*, view::AppView};
+
+mod backend;
+mod content_parser;
+mod dependency_builder;
+mod scraper;
+mod tui;
+mod utils;
 mod view;
 
 #[tokio::main]
 async fn main() {
-    let response =
-        reqwest::get("https://blessed.rs/crates").await;
-    let html_content = response.unwrap().text().await.unwrap();
+    let mut terminal = init().unwrap();
 
-    display_category_view();
+    let app_result = AppView::default().run(&mut terminal);
 
-    println!("{html_content}");
-
-    let document = scraper::Html::parse_document(&html_content);
+    restore().unwrap()
 }
