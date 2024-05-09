@@ -1,19 +1,19 @@
 use std::{default, io};
 
-use color_eyre::owo_colors::OwoColorize;
-use crossterm::{event::{self, Event, KeyCode, KeyEvent, KeyEventKind}, style::style};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
     prelude::*,
+    style::Style,
     symbols::border,
     widgets::{block::*, *},
 };
-use strum::{Display, EnumIter, FromRepr};
+use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
 
 use crate::tui::tui::Tui;
 
 #[derive(Default)]
 pub struct AppView {
-    current_tab_category : CategoriesTabs,
+    current_tab_category: CategoriesTabs,
     exit: bool,
 }
 
@@ -26,7 +26,6 @@ pub enum CategoriesTabs {
 }
 
 impl CategoriesTabs {
-
     pub fn next(self) -> Self {
         let current_index = self as usize;
         let previous_index = current_index.saturating_add(1);
@@ -39,13 +38,34 @@ impl CategoriesTabs {
         Self::from_repr(previous_index).unwrap_or(self)
     }
 
-    
+    fn render_clis_section(self, area: Rect, buf: &mut Buffer) {
+        Paragraph::new("clis section").render(area, buf)
+    }
 
-    
+    fn render_graphics_section(self, area: Rect, buf: &mut Buffer) {
+        Paragraph::new("Graphics section").render(area, buf)
+    }
+
+    fn render_concurrency_section(self, area: Rect, buf: &mut Buffer) {
+        Paragraph::new("Concurrency section").render(area, buf)
+    }
+}
+
+impl Widget for CategoriesTabs {
+    fn render(self, area: Rect, buf: &mut Buffer)
+    where
+        Self: Sized,
+    {
+        match self {
+            Self::Clis => self.render_clis_section(area, buf),
+            Self::Graphics => self.render_graphics_section(area, buf),
+            Self::Concurrency => self.render_concurrency_section(area, buf),
+        }
+    }
 }
 
 pub enum Screen {
-    Selecting, 
+    Selecting,
     Reviewing,
 }
 
@@ -54,16 +74,23 @@ impl Widget for &AppView {
     where
         Self: Sized,
     {
-        let title = Title::from(" Get blessed.rs ".bold());
+        let main_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(vec![
+                Constraint::Length(2),
+                Constraint::Length(3),
+                Constraint::Fill(1),
+                Constraint::Length(2),
+            ])
+            .split(area);
 
-        let instructions = Title::from(Line::from(vec![
-            " Next ".into(),
-            "<Tab>".blue().bold(),
-            " Quit ".into(),
-            "<Q> ".blue().bold(),
-        ]));
+        self.render_main_title(main_layout[0], buf);
 
+        self.render_tabs(main_layout[1], buf);
 
+        self.render_main_section(main_layout[2], buf);
+
+        self.render_footer(main_layout[3], buf)
     }
 }
 
@@ -77,34 +104,7 @@ impl AppView {
     }
 
     fn render_frame(&self, frame: &mut Frame) {
-
-        let main_layout = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints(vec![
-                Constraint::Length(3),
-                Constraint::Fill(1),
-            ]).split(frame.size());
-
-        let block_tabs = Block::default().title("Crates category").borders(Borders::ALL).border_set(border::ROUNDED);
-
-        let categories_container = Tabs::new(vec!["Concurrency", "Graphics", "Clis"])
-            .block(block_tabs)
-            .style(Style::default().white())
-            .highlight_style(Style::default().yellow())
-            .select(0)
-            .divider(symbols::DOT);
-
-        frame.render_widget(categories_container, main_layout[0]);
-
-        let categories_container = Paragraph::new(" Crates ").block(Block::default().borders(Borders::ALL).border_set(border::ROUNDED));
-
-        frame.render_widget(categories_container, main_layout[1]);
-
-
-        let categories = ["Concurrency", "Graphics", "Clis"];
-
-
-
+        frame.render_widget(self, frame.size());
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
@@ -121,6 +121,7 @@ impl AppView {
         match key_event.code {
             KeyCode::Char('q') => self.exit(),
             KeyCode::Tab => self.next_tab(),
+            KeyCode::BackTab => self.previos_tab(),
             _ => {}
         }
     }
@@ -136,7 +137,61 @@ impl AppView {
         self.current_tab_category = self.current_tab_category.previos();
     }
 
+    fn render_tabs(&self, area: Rect, buf: &mut Buffer) {
+        let block_tabs = Block::default()
+            .title("Categories")
+            .borders(Borders::ALL)
+            .border_set(border::ROUNDED);
 
+        let categories: Vec<String> = CategoriesTabs::iter()
+            .map(|category| format!(" {category} "))
+            .collect();
+
+        let selected_tab_index = self.current_tab_category as usize;
+
+        Tabs::new(categories)
+            .block(block_tabs)
+            .style(Style::default().white())
+            .highlight_style(Style::default().yellow())
+            .select(selected_tab_index)
+            .divider(symbols::DOT)
+            .render(area, buf)
+    }
+
+    fn render_main_section(&self, area: Rect, buf: &mut Buffer) {
+        Paragraph::new(format!(
+            " here goes the most popular crates for: {}",
+            self.current_tab_category
+        ))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_set(border::ROUNDED),
+        )
+        .render(area, buf);
+    }
+
+    fn render_main_title(&self, area: Rect, buf: &mut Buffer) {
+        Paragraph::new(" Get blessed.rs ")
+            .block(
+                Block::default()
+                    .borders(Borders::BOTTOM)
+                    .border_set(border::ROUNDED),
+            )
+            .centered()
+            .render(area, buf)
+    }
+
+    fn render_footer(&self, area: Rect, buf: &mut Buffer) {
+        let text = Title::from(Line::from(vec![
+            " Next ".into(),
+            "<Tab>".blue().bold(),
+            " Previous ".into(),
+            "<Shift + Tab>".blue().bold(),
+            " Quit ".into(),
+            "<Q> ".blue().bold(),
+        ]));
+
+        Block::default().title(text).render(area, buf)
+    }
 }
-
-
