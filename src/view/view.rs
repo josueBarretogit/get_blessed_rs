@@ -1,4 +1,4 @@
-use std::{default, io};
+use std::io;
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
@@ -25,29 +25,91 @@ pub enum CategoriesTabs {
     Concurrency,
 }
 
+pub enum Screen {
+    Selecting,
+    Reviewing,
+}
+
 impl CategoriesTabs {
     pub fn next(self) -> Self {
         let current_index = self as usize;
         let previous_index = current_index.saturating_add(1);
-        Self::from_repr(previous_index).unwrap_or(self)
+        Self::from_repr(previous_index).unwrap_or(Self::from_repr(0).unwrap())
     }
 
-    pub fn previos(self) -> Self {
+    pub fn previous(self) -> Self {
         let current_index = self as usize;
         let previous_index = current_index.saturating_sub(1);
         Self::from_repr(previous_index).unwrap_or(self)
     }
 
     fn render_clis_section(self, area: Rect, buf: &mut Buffer) {
-        Paragraph::new("clis section").render(area, buf)
+
+        let cli_items = [
+            ListItem::new("item 1 clis"),
+            ListItem::new("item 1 Graphics"),
+            ListItem::new("item 1"),
+        ];
+
+        let list = List::new(cli_items)
+            .block(
+                Block::default()
+                    .title("List")
+                    .borders(Borders::ALL)
+                    .padding(Padding::uniform(2)),
+            )
+            .highlight_style(Style::default().blue())
+            .highlight_symbol(">>")
+            .direction(ListDirection::TopToBottom);
+
+        StatefulWidget::render(list, area, buf, &mut ListState::default());
+
     }
 
     fn render_graphics_section(self, area: Rect, buf: &mut Buffer) {
-        Paragraph::new("Graphics section").render(area, buf)
+        let cli_items = [
+            ListItem::new("item 1 Graphics"),
+            ListItem::new("item 1 Graphics"),
+            ListItem::new("item 1"),
+        ];
+
+        let list = List::new(cli_items)
+            .block(
+                Block::default()
+                    .title("List")
+                    .borders(Borders::ALL)
+                    .padding(Padding::uniform(2)),
+            )
+            .highlight_style(Style::default().blue())
+            .highlight_symbol(">>")
+            .direction(ListDirection::TopToBottom);
+
+        StatefulWidget::render(list, area, buf, &mut ListState::default());
     }
 
     fn render_concurrency_section(self, area: Rect, buf: &mut Buffer) {
-        Paragraph::new("Concurrency section").render(area, buf)
+        let cli_items = [
+            ListItem::new("item 1"),
+            ListItem::new("item 1"),
+            ListItem::new("item 1"),
+        ];
+
+        let list = List::new(cli_items)
+            .block(
+                Block::default()
+                    .title("List")
+                    .borders(Borders::ALL)
+                    .padding(Padding::uniform(2)),
+            )
+            .highlight_style(Style::default().blue())
+            .highlight_symbol(">>")
+            .direction(ListDirection::TopToBottom);
+
+        StatefulWidget::render(list, area, buf, &mut ListState::default());
+    }
+
+    fn block_content(self) -> Block<'static> {
+        Block::bordered().border_set(symbols::border::PROPORTIONAL_TALL)
     }
 }
 
@@ -64,11 +126,6 @@ impl Widget for CategoriesTabs {
     }
 }
 
-pub enum Screen {
-    Selecting,
-    Reviewing,
-}
-
 impl Widget for &AppView {
     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer)
     where
@@ -79,7 +136,7 @@ impl Widget for &AppView {
             .constraints(vec![
                 Constraint::Length(2),
                 Constraint::Length(3),
-                Constraint::Fill(1),
+                Constraint::Min(1),
                 Constraint::Length(2),
             ])
             .split(area);
@@ -134,7 +191,7 @@ impl AppView {
     }
 
     pub fn previos_tab(&mut self) {
-        self.current_tab_category = self.current_tab_category.previos();
+        self.current_tab_category = self.current_tab_category.previous();
     }
 
     fn render_tabs(&self, area: Rect, buf: &mut Buffer) {
@@ -159,16 +216,22 @@ impl AppView {
     }
 
     fn render_main_section(&self, area: Rect, buf: &mut Buffer) {
-        Paragraph::new(format!(
-            " here goes the most popular crates for: {}",
-            self.current_tab_category
-        ))
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_set(border::ROUNDED),
-        )
-        .render(area, buf);
+        let layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(vec![Constraint::Percentage(75), Constraint::Percentage(25)])
+            .split(area);
+
+        Block::bordered()
+            .title("main content")
+            .border_set(border::ROUNDED)
+            .render(layout[0], buf);
+
+        self.current_tab_category.render(layout[0], buf);
+
+        Block::bordered()
+            .title("dependencies list")
+            .border_set(border::ROUNDED)
+            .render(layout[1], buf);
     }
 
     fn render_main_title(&self, area: Rect, buf: &mut Buffer) {
@@ -179,7 +242,7 @@ impl AppView {
                     .border_set(border::ROUNDED),
             )
             .centered()
-            .render(area, buf)
+            .render(area, buf);
     }
 
     fn render_footer(&self, area: Rect, buf: &mut Buffer) {
@@ -192,6 +255,11 @@ impl AppView {
             "<Q> ".blue().bold(),
         ]));
 
-        Block::default().title(text).render(area, buf)
+        Block::default()
+            .title(text)
+            .title(Title::from("Have questions? ask me on: ").alignment(Alignment::Right))
+            .borders(Borders::BOTTOM)
+            .border_set(border::ROUNDED)
+            .render(area, buf);
     }
 }
