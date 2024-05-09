@@ -1,17 +1,52 @@
-use std::io;
+use std::{default, io};
 
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
+use color_eyre::owo_colors::OwoColorize;
+use crossterm::{event::{self, Event, KeyCode, KeyEvent, KeyEventKind}, style::style};
 use ratatui::{
     prelude::*,
     symbols::border,
     widgets::{block::*, *},
 };
+use strum::{Display, EnumIter, FromRepr};
 
 use crate::tui::tui::Tui;
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct AppView {
+    current_tab_category : CategoriesTabs,
     exit: bool,
+}
+
+#[derive(Default, Clone, Copy, Display, FromRepr, EnumIter)]
+pub enum CategoriesTabs {
+    #[default]
+    Graphics,
+    Clis,
+    Concurrency,
+}
+
+impl CategoriesTabs {
+
+    pub fn next(self) -> Self {
+        let current_index = self as usize;
+        let previous_index = current_index.saturating_add(1);
+        Self::from_repr(previous_index).unwrap_or(self)
+    }
+
+    pub fn previos(self) -> Self {
+        let current_index = self as usize;
+        let previous_index = current_index.saturating_sub(1);
+        Self::from_repr(previous_index).unwrap_or(self)
+    }
+
+    
+
+    
+}
+
+pub enum Screen {
+    Selecting, 
+    Reviewing,
 }
 
 impl Widget for &AppView {
@@ -28,15 +63,6 @@ impl Widget for &AppView {
             "<Q> ".blue().bold(),
         ]));
 
-        let block = Block::default()
-            .title(title.alignment(Alignment::Center))
-            .title(
-                instructions
-                    .alignment(Alignment::Center)
-                    .position(Position::Bottom),
-            )
-            .borders(Borders::BOTTOM)
-            .border_set(border::THICK);
 
     }
 }
@@ -52,32 +78,37 @@ impl AppView {
 
     fn render_frame(&self, frame: &mut Frame) {
 
-        let layout = Layout::default()
-            .direction(Direction::Horizontal)
+        let main_layout = Layout::default()
+            .direction(Direction::Vertical)
             .constraints(vec![
-                Constraint::Percentage(50),
-                Constraint::Percentage(50)
+                Constraint::Length(3),
+                Constraint::Fill(1),
             ]).split(frame.size());
 
-        let categories = ["Concurrency", "Graphics"];
+        let block_tabs = Block::default().title("Crates category").borders(Borders::ALL).border_set(border::ROUNDED);
+
+        let categories_container = Tabs::new(vec!["Concurrency", "Graphics", "Clis"])
+            .block(block_tabs)
+            .style(Style::default().white())
+            .highlight_style(Style::default().yellow())
+            .select(0)
+            .divider(symbols::DOT);
+
+        frame.render_widget(categories_container, main_layout[0]);
+
+        let categories_container = Paragraph::new(" Crates ").block(Block::default().borders(Borders::ALL).border_set(border::ROUNDED));
+
+        frame.render_widget(categories_container, main_layout[1]);
 
 
-        for (index, category) in categories.iter().enumerate() {
-            let block = 
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_set(border::THICK);
+        let categories = ["Concurrency", "Graphics", "Clis"];
 
-            frame.render_widget(Paragraph::new(category.to_owned()).block(block.to_owned()), layout[index]);
 
-        }
 
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
         match event::read()? {
-            // it's important to check that the event is a key press event as
-            // crossterm also emits key release and repeat events on Windows.
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                 self.handle_key_event(key_event)
             }
@@ -89,10 +120,23 @@ impl AppView {
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q') => self.exit(),
+            KeyCode::Tab => self.next_tab(),
             _ => {}
         }
     }
     fn exit(&mut self) {
         self.exit = true;
     }
+
+    pub fn next_tab(&mut self) {
+        self.current_tab_category = self.current_tab_category.next();
+    }
+
+    pub fn previos_tab(&mut self) {
+        self.current_tab_category = self.current_tab_category.previos();
+    }
+
+
 }
+
+
