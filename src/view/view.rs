@@ -1,4 +1,4 @@
-use std::io;
+use std::{borrow::BorrowMut, io};
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
@@ -13,8 +13,37 @@ use crate::tui::tui::Tui;
 
 #[derive(Default)]
 pub struct AppView {
-    current_tab_category: CategoriesTabs,
-    exit: bool,
+    pub crates_list : StateList,
+    pub current_tab_category: CategoriesTabs,
+    pub exit: bool,
+}
+
+#[derive(Default)]
+pub struct CrateItemList {
+    pub name : String,
+    pub description : String,
+    pub docs : String
+}
+
+
+#[derive(Default)]
+struct StateList {
+    pub state : ListState,
+    pub items : Vec<CrateItemList>
+}
+
+impl StateList {
+    pub fn set_items(&mut self, items : Vec<CrateItemList>) {
+        self.items = items;
+    }
+
+    fn scroll_up(&mut self) {
+
+    }
+
+    fn scroll_down(&mut self) {
+
+    }
 }
 
 #[derive(Default, Clone, Copy, Display, FromRepr, EnumIter)]
@@ -43,7 +72,19 @@ impl CategoriesTabs {
         Self::from_repr(previous_index).unwrap_or(self)
     }
 
-    fn render_clis_section(self, area: Rect, buf: &mut Buffer) {
+
+    fn render_with_state(self, area: Rect, buf: &mut Buffer, state : &mut ListState)
+    where
+        Self: Sized,
+    {
+        match self {
+            Self::Clis => self.render_clis_section(area, buf, state),
+            Self::Graphics => self.render_graphics_section(area, buf, state),
+            Self::Concurrency => self.render_concurrency_section(area, buf, state),
+        }
+    }
+
+    fn render_clis_section(self, area: Rect, buf: &mut Buffer, state : &mut ListState) {
 
         let cli_items = [
             ListItem::new("item 1 clis"),
@@ -62,11 +103,11 @@ impl CategoriesTabs {
             .highlight_symbol(">>")
             .direction(ListDirection::TopToBottom);
 
-        StatefulWidget::render(list, area, buf, &mut ListState::default());
+        StatefulWidget::render(list, area, buf, state);
 
     }
 
-    fn render_graphics_section(self, area: Rect, buf: &mut Buffer) {
+    fn render_graphics_section(self, area: Rect, buf: &mut Buffer, state : &mut ListState) {
         let cli_items = [
             ListItem::new("item 1 Graphics"),
             ListItem::new("item 1 Graphics"),
@@ -84,10 +125,10 @@ impl CategoriesTabs {
             .highlight_symbol(">>")
             .direction(ListDirection::TopToBottom);
 
-        StatefulWidget::render(list, area, buf, &mut ListState::default());
+        StatefulWidget::render(list, area, buf, state);
     }
 
-    fn render_concurrency_section(self, area: Rect, buf: &mut Buffer) {
+    fn render_concurrency_section(self, area: Rect, buf: &mut Buffer, state : &mut ListState) {
         let cli_items = [
             ListItem::new("item 1"),
             ListItem::new("item 1"),
@@ -105,7 +146,7 @@ impl CategoriesTabs {
             .highlight_symbol(">>")
             .direction(ListDirection::TopToBottom);
 
-        StatefulWidget::render(list, area, buf, &mut ListState::default());
+        StatefulWidget::render(list, area, buf, state);
     }
 
     fn block_content(self) -> Block<'static> {
@@ -113,20 +154,9 @@ impl CategoriesTabs {
     }
 }
 
-impl Widget for CategoriesTabs {
-    fn render(self, area: Rect, buf: &mut Buffer)
-    where
-        Self: Sized,
-    {
-        match self {
-            Self::Clis => self.render_clis_section(area, buf),
-            Self::Graphics => self.render_graphics_section(area, buf),
-            Self::Concurrency => self.render_concurrency_section(area, buf),
-        }
-    }
-}
 
-impl Widget for &AppView {
+
+impl Widget for &mut AppView {
     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer)
     where
         Self: Sized,
@@ -134,20 +164,18 @@ impl Widget for &AppView {
         let main_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints(vec![
-                Constraint::Length(2),
                 Constraint::Length(3),
                 Constraint::Min(1),
                 Constraint::Length(2),
             ])
             .split(area);
 
-        self.render_main_title(main_layout[0], buf);
 
-        self.render_tabs(main_layout[1], buf);
+        self.render_tabs(main_layout[0], buf);
 
-        self.render_main_section(main_layout[2], buf);
+        self.render_main_section(main_layout[1], buf);
 
-        self.render_footer(main_layout[3], buf)
+        self.render_footer(main_layout[2], buf)
     }
 }
 
@@ -160,11 +188,12 @@ impl AppView {
         Ok(())
     }
 
-    fn render_frame(&self, frame: &mut Frame) {
+    fn render_frame(&mut self, frame: &mut Frame) {
         frame.render_widget(self, frame.size());
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
+        self.select_first();
         match event::read()? {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                 self.handle_key_event(key_event)
@@ -182,6 +211,8 @@ impl AppView {
             _ => {}
         }
     }
+
+
     fn exit(&mut self) {
         self.exit = true;
     }
@@ -215,7 +246,7 @@ impl AppView {
             .render(area, buf)
     }
 
-    fn render_main_section(&self, area: Rect, buf: &mut Buffer) {
+    fn render_main_section(&mut self, area: Rect, buf: &mut Buffer) {
         let layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(vec![Constraint::Percentage(75), Constraint::Percentage(25)])
@@ -226,7 +257,8 @@ impl AppView {
             .border_set(border::ROUNDED)
             .render(layout[0], buf);
 
-        self.current_tab_category.render(layout[0], buf);
+        self.current_tab_category.render_with_state(layout[0], buf, &mut self.crates_list.state);
+
 
         Block::bordered()
             .title("dependencies list")
@@ -234,16 +266,6 @@ impl AppView {
             .render(layout[1], buf);
     }
 
-    fn render_main_title(&self, area: Rect, buf: &mut Buffer) {
-        Paragraph::new(" Get blessed.rs ")
-            .block(
-                Block::default()
-                    .borders(Borders::BOTTOM)
-                    .border_set(border::ROUNDED),
-            )
-            .centered()
-            .render(area, buf);
-    }
 
     fn render_footer(&self, area: Rect, buf: &mut Buffer) {
         let text = Title::from(Line::from(vec![
@@ -257,9 +279,13 @@ impl AppView {
 
         Block::default()
             .title(text)
-            .title(Title::from("Have questions? ask me on: ").alignment(Alignment::Right))
+            .title(Title::from("V0.2.0").alignment(Alignment::Right))
             .borders(Borders::BOTTOM)
             .border_set(border::ROUNDED)
             .render(area, buf);
+    }
+
+    fn select_first(&mut self) {
+        self.crates_list.state.select(Some(0));
     }
 }
