@@ -1,5 +1,5 @@
 use tui::tui::{init, restore};
-use view::{crate_category::*, ui::AppView};
+use view::ui::AppView;
 
 mod backend;
 mod content_parser;

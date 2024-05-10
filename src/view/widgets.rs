@@ -74,6 +74,29 @@ impl CratesListWidget {
     }
 }
 
+impl From<crate::backend::Table> for CratesListWidget {
+    fn from(value: crate::backend::Table) -> Self {
+        let mut crates: Vec<CrateItemList> = vec![];
+
+        value.entries.iter().for_each(|entrie| {
+            crates.push(CrateItemList::from(entrie));
+        });
+
+        Self { crates: crates }
+    }
+}
+
+impl From<&crate::backend::TableEntry> for CrateItemList {
+    fn from(value: &crate::backend::TableEntry) -> Self {
+        Self {
+            use_case: value.use_case.clone(),
+            name: String::default(),
+            description: String::default(),
+            docs: String::default(),
+        }
+    }
+}
+
 impl<'a> Widget for Footer<'a> {
     fn render(self, area: Rect, buf: &mut Buffer)
     where
@@ -189,10 +212,6 @@ impl CategoriesTabs {
             .direction(ListDirection::TopToBottom);
 
         StatefulWidget::render(list, area, buf, state);
-    }
-
-    fn block_content(self) -> Block<'static> {
-        Block::bordered().border_set(symbols::border::PROPORTIONAL_TALL)
     }
 }
 

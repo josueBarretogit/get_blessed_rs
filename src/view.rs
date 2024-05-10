@@ -1,4 +1,3 @@
-pub mod crate_category;
 pub mod ui;
 pub mod widgets;
 

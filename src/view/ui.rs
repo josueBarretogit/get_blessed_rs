@@ -1,4 +1,4 @@
-use std::io;
+use std::{io, sync::Arc};
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 
@@ -11,7 +11,7 @@ use ratatui::{
 
 use strum::IntoEnumIterator;
 
-use crate::tui::tui::Tui;
+use crate::{backend::backend::get_crates, tui::tui::Tui};
 
 use super::widgets::*;
 
@@ -49,7 +49,10 @@ impl Widget for &mut AppView {
 
         self.render_tabs(main_layout[0], buf);
 
-        self.render_main_section(main_layout[1], buf);
+        tokio::spawn(async move {
+            let are_safe = Arc::from(main_layout[1]);
+            self.render_main_section(*are_safe, buf).await;
+        });
 
         self.render_footer(main_layout[2], buf)
     }
@@ -104,7 +107,7 @@ impl AppView {
         Widget::render(self.current_tab_category, area, buf);
     }
 
-    fn render_main_section(&mut self, area: Rect, buf: &mut Buffer) {
+    async fn render_main_section(&mut self, area: Rect, buf: &mut Buffer) {
         let layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(vec![Constraint::Percentage(75), Constraint::Percentage(25)])
@@ -115,7 +118,7 @@ impl AppView {
             .border_set(border::ROUNDED)
             .render(layout[0], buf);
 
-        self.render_crates_list(layout[0], buf);
+        self.render_crates_list(layout[0], buf).await;
 
         Block::bordered()
             .title("dependencies list")
@@ -127,20 +130,20 @@ impl AppView {
         Footer::new(
             vec![
                 " Next ".into(),
-                "<Tab>".blue().bold(),
+                "<Tab>,".blue().bold(),
                 " Previous ".into(),
-                "<Shift + Tab>".blue().bold(),
+                "<Shift + Tab>,".blue().bold(),
                 " Check docs ".into(),
-                "<D>".blue().bold(),
+                "<D>,".blue().bold(),
                 " Quit ".into(),
-                "<Q> ".blue().bold(),
+                "<Q>".blue().bold(),
             ],
             "V0.2.0",
         )
         .render(area, buf);
     }
 
-    fn render_crates_list(&mut self, area: Rect, buf: &mut Buffer) {
+    async fn render_crates_list(&mut self, area: Rect, buf: &mut Buffer) {
         match self.current_tab_category {
             CategoriesTabs::Graphics => StatefulWidget::render(
                 CratesListWidget::new(vec![CrateItemList::new(
@@ -173,12 +176,7 @@ impl AppView {
                 &mut self.crates_list.state,
             ),
             CategoriesTabs::Clis => StatefulWidget::render(
-                CratesListWidget::new(vec![CrateItemList::new(
-                    "cli tool".to_owned(),
-                    "cli".to_owned(),
-                    "multithreading with cli".to_owned(),
-                    "link to docs cli".to_owned(),
-                )]),
+                CratesListWidget::from(get_crates("Clis".to_owned()).await),
                 area,
                 buf,
                 &mut self.crates_list.state,
