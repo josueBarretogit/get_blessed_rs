@@ -1,5 +1,5 @@
 pub mod crate_category;
-pub mod view;
+pub mod ui;
 pub mod widgets;
 
 pub trait View {
