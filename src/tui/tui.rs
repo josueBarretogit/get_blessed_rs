@@ -1,8 +1,7 @@
 use std::io;
 
 use crossterm::{
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    event::KeyEvent, execute, terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen}
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
 
@@ -20,3 +19,12 @@ pub fn restore() -> io::Result<()> {
     disable_raw_mode()?;
     Ok(())
 }
+
+#[derive(Clone, Copy, Debug)]
+pub enum Event {
+    /// Terminal tick.
+    Tick,
+    /// Key press.
+    Key(KeyEvent),
+}
+

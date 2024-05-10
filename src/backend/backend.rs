@@ -1,6 +1,6 @@
 use super::{Crates, Table, TableEntry};
 
-pub async fn get_crates(category: String) -> Table {
+pub fn get_crates(category: String, index: usize) -> Table {
     let entries1 = vec![
         TableEntry {
             use_case: "a".into(),
@@ -21,7 +21,7 @@ pub async fn get_crates(category: String) -> Table {
             use_case: "a".into(),
             crates: vec![
                 Crates {
-                    name: "serde".into(),
+                    name: index.to_string(),
                     description: "de facto standar".into(),
                     docs: "httpp://".into(),
                 },

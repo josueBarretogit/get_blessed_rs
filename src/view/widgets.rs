@@ -1,4 +1,3 @@
-use color_eyre::owo_colors::OwoColorize;
 use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
 
 use ratatui::{
@@ -15,16 +14,14 @@ pub struct Footer<'a> {
 
 #[derive(Default)]
 pub struct CrateItemList {
-    pub use_case: String,
     pub name: String,
     pub description: String,
     pub docs: String,
 }
 
 impl CrateItemList {
-    pub fn new(use_case: String, name: String, description: String, docs: String) -> Self {
+    pub fn new(name: String, description: String, docs: String) -> Self {
         Self {
-            use_case,
             name,
             description,
             docs,
@@ -35,10 +32,7 @@ impl CrateItemList {
 impl Into<ListItem<'_>> for CrateItemList {
     fn into(self) -> ListItem<'static> {
         let line = Line::styled(
-            format!(
-                "{} {} {} {}",
-                self.name, self.use_case, self.description, self.docs
-            ),
+            format!("{} {} {}", self.name, self.description, self.docs),
             Style::default().bold(),
         );
         ListItem::new(line)
@@ -47,7 +41,7 @@ impl Into<ListItem<'_>> for CrateItemList {
 
 #[derive(Default)]
 pub struct CratesListWidget {
-    crates: Vec<CrateItemList>,
+    pub crates: Vec<CrateItemList>,
 }
 
 impl StatefulWidget for CratesListWidget {
@@ -61,7 +55,7 @@ impl StatefulWidget for CratesListWidget {
                     .padding(Padding::uniform(2)),
             )
             .highlight_style(Style::default().blue())
-            .highlight_symbol(">>")
+            .highlight_symbol(">> ")
             .direction(ListDirection::TopToBottom);
 
         StatefulWidget::render(list, area, buf, state);
@@ -78,21 +72,23 @@ impl From<crate::backend::Table> for CratesListWidget {
     fn from(value: crate::backend::Table) -> Self {
         let mut crates: Vec<CrateItemList> = vec![];
 
-        value.entries.iter().for_each(|entrie| {
-            crates.push(CrateItemList::from(entrie));
+        value.entries.iter().for_each(|entry| {
+            entry
+                .crates
+                .iter()
+                .for_each(|cr| crates.push(CrateItemList::from(cr)));
         });
 
-        Self { crates: crates }
+        Self { crates }
     }
 }
 
-impl From<&crate::backend::TableEntry> for CrateItemList {
-    fn from(value: &crate::backend::TableEntry) -> Self {
+impl From<&crate::backend::Crates> for CrateItemList {
+    fn from(value: &crate::backend::Crates) -> Self {
         Self {
-            use_case: value.use_case.clone(),
-            name: String::default(),
-            description: String::default(),
-            docs: String::default(),
+            name: value.name.to_owned(),
+            description: value.description.to_owned(),
+            docs: value.docs.to_owned(),
         }
     }
 }
@@ -138,80 +134,6 @@ impl CategoriesTabs {
         let current_index = self as usize;
         let previous_index = current_index.saturating_sub(1);
         Self::from_repr(previous_index).unwrap_or(self)
-    }
-
-    pub fn render_with_state(self, area: Rect, buf: &mut Buffer, state: &mut ListState)
-    where
-        Self: Sized,
-    {
-        match self {
-            Self::Clis => self.render_clis_section(area, buf, state),
-            Self::Graphics => self.render_graphics_section(area, buf, state),
-            Self::Concurrency => self.render_concurrency_section(area, buf, state),
-        }
-    }
-
-    fn render_clis_section(self, area: Rect, buf: &mut Buffer, state: &mut ListState) {
-        let cli_items = [
-            ListItem::new("item 1 clis"),
-            ListItem::new("item 1 Graphics"),
-            ListItem::new("item 1"),
-        ];
-
-        let list = List::new(cli_items)
-            .block(
-                Block::default()
-                    .title("List")
-                    .borders(Borders::ALL)
-                    .padding(Padding::uniform(2)),
-            )
-            .highlight_style(Style::default().blue())
-            .highlight_symbol(">>")
-            .direction(ListDirection::TopToBottom);
-
-        StatefulWidget::render(list, area, buf, state);
-    }
-
-    fn render_graphics_section(self, area: Rect, buf: &mut Buffer, state: &mut ListState) {
-        let cli_items = [
-            ListItem::new("item 1 Graphics"),
-            ListItem::new("item 1 Graphics"),
-            ListItem::new("item 1"),
-        ];
-
-        let list = List::new(cli_items)
-            .block(
-                Block::default()
-                    .title("List")
-                    .borders(Borders::ALL)
-                    .padding(Padding::uniform(2)),
-            )
-            .highlight_style(Style::default().blue())
-            .highlight_symbol(">>")
-            .direction(ListDirection::TopToBottom);
-
-        StatefulWidget::render(list, area, buf, state);
-    }
-
-    fn render_concurrency_section(self, area: Rect, buf: &mut Buffer, state: &mut ListState) {
-        let cli_items = [
-            ListItem::new("item 1"),
-            ListItem::new("item 1"),
-            ListItem::new("item 1"),
-        ];
-
-        let list = List::new(cli_items)
-            .block(
-                Block::default()
-                    .title("List")
-                    .borders(Borders::ALL)
-                    .padding(Padding::uniform(2)),
-            )
-            .highlight_style(Style::default().blue())
-            .highlight_symbol(">>")
-            .direction(ListDirection::TopToBottom);
-
-        StatefulWidget::render(list, area, buf, state);
     }
 }
 

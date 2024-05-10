@@ -9,8 +9,8 @@ mod tui;
 mod utils;
 mod view;
 
-#[tokio::main]
-async fn main() {
+fn main() {
+
     let mut terminal = init().unwrap();
 
     let app_result = AppView::default().run(&mut terminal);

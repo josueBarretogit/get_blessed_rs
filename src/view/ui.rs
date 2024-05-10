@@ -49,10 +49,7 @@ impl Widget for &mut AppView {
 
         self.render_tabs(main_layout[0], buf);
 
-        tokio::spawn(async move {
-            let are_safe = Arc::from(main_layout[1]);
-            self.render_main_section(*are_safe, buf).await;
-        });
+        self.render_main_section(main_layout[1], buf);
 
         self.render_footer(main_layout[2], buf)
     }
@@ -72,7 +69,6 @@ impl AppView {
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
-        self.select_first();
         match event::read()? {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                 self.handle_key_event(key_event)
@@ -87,6 +83,8 @@ impl AppView {
             KeyCode::Char('q') => self.exit(),
             KeyCode::Tab => self.next_tab(),
             KeyCode::BackTab => self.previos_tab(),
+            KeyCode::Down => self.scroll_down(),
+            KeyCode::Up => self.scroll_up(),
             _ => {}
         }
     }
@@ -107,7 +105,7 @@ impl AppView {
         Widget::render(self.current_tab_category, area, buf);
     }
 
-    async fn render_main_section(&mut self, area: Rect, buf: &mut Buffer) {
+    fn render_main_section(&mut self, area: Rect, buf: &mut Buffer) {
         let layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(vec![Constraint::Percentage(75), Constraint::Percentage(25)])
@@ -118,7 +116,7 @@ impl AppView {
             .border_set(border::ROUNDED)
             .render(layout[0], buf);
 
-        self.render_crates_list(layout[0], buf).await;
+        self.render_crates_list(layout[0], buf);
 
         Block::bordered()
             .title("dependencies list")
@@ -143,11 +141,10 @@ impl AppView {
         .render(area, buf);
     }
 
-    async fn render_crates_list(&mut self, area: Rect, buf: &mut Buffer) {
+    fn render_crates_list(&mut self, area: Rect, buf: &mut Buffer) {
         match self.current_tab_category {
             CategoriesTabs::Graphics => StatefulWidget::render(
                 CratesListWidget::new(vec![CrateItemList::new(
-                    "cli".to_owned(),
                     "clap".to_owned(),
                     "a cool cli arg parser".to_owned(),
                     "link to docs".to_owned(),
@@ -159,13 +156,11 @@ impl AppView {
             CategoriesTabs::Concurrency => StatefulWidget::render(
                 CratesListWidget::new(vec![
                     CrateItemList::new(
-                        "rayon concurrency".to_owned(),
                         "another thing concurrency".to_owned(),
                         "multithreading concurrency".to_owned(),
                         "link to docs concurrency".to_owned(),
                     ),
                     CrateItemList::new(
-                        "rayon concurrency 2".to_owned(),
                         "another thing concurrency".to_owned(),
                         "multithreading concurrency".to_owned(),
                         "link to docs concurrency".to_owned(),
@@ -176,7 +171,10 @@ impl AppView {
                 &mut self.crates_list.state,
             ),
             CategoriesTabs::Clis => StatefulWidget::render(
-                CratesListWidget::from(get_crates("Clis".to_owned()).await),
+                CratesListWidget::from(get_crates(
+                    "Clis".to_owned(),
+                    self.crates_list.crates.crates.len(),
+                )),
                 area,
                 buf,
                 &mut self.crates_list.state,
@@ -184,7 +182,34 @@ impl AppView {
         };
     }
 
-    fn select_first(&mut self) {
-        self.crates_list.state.select(Some(0));
+    fn scroll_down(&mut self) {
+        let next_index = match self.crates_list.state.selected() {
+            Some(index) => {
+                if index == 0 {
+                    1
+                } else if index >= self.crates_list.crates.crates.len() {
+                    0
+                } else {
+                    index + 1
+                }
+            }
+            None => self.crates_list.state.selected().unwrap_or(0),
+        };
+
+        self.crates_list.state.select(Some(next_index));
+    }
+
+    fn scroll_up(&mut self) {
+        let next_index = match self.crates_list.state.selected() {
+            Some(index) => {
+                if index == 0 {
+                    self.crates_list.crates.crates.len()
+                } else {
+                    index - 1
+                }
+            }
+            None => self.crates_list.state.selected().unwrap_or(0),
+        };
+        self.crates_list.state.select(Some(next_index));
     }
 }
