@@ -13,10 +13,43 @@ pub struct Footer<'a> {
 }
 
 #[derive(Default)]
+pub enum ItemListStatus {
+    Selected,
+    #[default]
+    Unselected,
+}
+
+#[derive(Default)]
 pub struct CrateItemList {
     pub name: String,
     pub description: String,
     pub docs: String,
+    pub status: ItemListStatus,
+}
+
+#[derive(Clone, Default)]
+pub struct DependenciesListWidget {
+    pub dependencies: Vec<String>,
+}
+
+impl DependenciesListWidget {
+    pub fn new(dependencies: Vec<String>) -> Self {
+        Self { dependencies }
+    }
+}
+
+impl StatefulWidget for DependenciesListWidget {
+    type State = ListState;
+
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+        let list = List::new(self.dependencies)
+            .block(Block::default().padding(Padding::uniform(2)))
+            .highlight_style(Style::default().blue())
+            .highlight_symbol("* ")
+            .direction(ListDirection::TopToBottom);
+
+        StatefulWidget::render(list, area, buf, state);
+    }
 }
 
 impl CrateItemList {
@@ -25,17 +58,8 @@ impl CrateItemList {
             name,
             description,
             docs,
+            status: ItemListStatus::Unselected,
         }
-    }
-}
-
-impl Into<ListItem<'_>> for CrateItemList {
-    fn into(self) -> ListItem<'static> {
-        let line = Line::styled(
-            format!("{} {} {}", self.name, self.description, self.docs),
-            Style::default().bold(),
-        );
-        ListItem::new(line)
     }
 }
 
@@ -47,16 +71,16 @@ pub struct CratesListWidget {
 impl StatefulWidget for CratesListWidget {
     type State = ListState;
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let list = List::new(self.crates)
-            .block(
-                Block::default()
-                    .title("Crates")
-                    .borders(Borders::ALL)
-                    .padding(Padding::uniform(2)),
-            )
-            .highlight_style(Style::default().blue())
-            .highlight_symbol(">> ")
-            .direction(ListDirection::TopToBottom);
+        let list = List::new(
+            self.crates
+                .iter()
+                .map(|crate_item| format!("{}, {}", crate_item.description, crate_item.name))
+                .collect::<Vec<String>>(),
+        )
+        .block(Block::default().padding(Padding::uniform(2)))
+        .highlight_style(Style::default().blue())
+        .highlight_symbol(">> ")
+        .direction(ListDirection::TopToBottom);
 
         StatefulWidget::render(list, area, buf, state);
     }
@@ -89,6 +113,7 @@ impl From<&crate::backend::Crates> for CrateItemList {
             name: value.name.to_owned(),
             description: value.description.to_owned(),
             docs: value.docs.to_owned(),
+            status: ItemListStatus::default(),
         }
     }
 }

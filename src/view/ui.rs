@@ -1,6 +1,5 @@
-use std::{io, sync::Arc};
-
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
+use std::{io, os::windows::raw, sync::Arc};
 
 use ratatui::{
     prelude::*,
@@ -9,14 +8,13 @@ use ratatui::{
     widgets::{block::*, *},
 };
 
-use strum::IntoEnumIterator;
-
 use crate::{backend::backend::get_crates, tui::tui::Tui};
 
-use super::widgets::*;
+use super::widgets::{DependenciesListWidget, *};
 
 #[derive(Default)]
 pub struct AppView {
+    pub dependencies_list: DependenciesList,
     pub crates_list: CratesList,
     pub current_tab_category: CategoriesTabs,
     pub exit: bool,
@@ -24,7 +22,13 @@ pub struct AppView {
 
 #[derive(Default)]
 pub struct CratesList {
-    crates: CratesListWidget,
+    crates_widget_list: CratesListWidget,
+    state: ListState,
+}
+
+#[derive(Default, Clone)]
+pub struct DependenciesList {
+    dependencies_widget: DependenciesListWidget,
     state: ListState,
 }
 
@@ -85,6 +89,7 @@ impl AppView {
             KeyCode::BackTab => self.previos_tab(),
             KeyCode::Down => self.scroll_down(),
             KeyCode::Up => self.scroll_up(),
+            KeyCode::Enter => self.toggle_dependencies(),
             _ => {}
         }
     }
@@ -112,7 +117,12 @@ impl AppView {
             .split(area);
 
         Block::bordered()
-            .title("main content")
+            .title("Crates")
+            .title_alignment(Alignment::Left)
+            .title_bottom(Line::from("Check docs").right_aligned())
+            .title_bottom(Line::from("<D>".blue()).right_aligned())
+            .title_bottom(Line::from("Select ").right_aligned())
+            .title_bottom(Line::from("<Space>".blue()).right_aligned())
             .border_set(border::ROUNDED)
             .render(layout[0], buf);
 
@@ -122,6 +132,8 @@ impl AppView {
             .title("dependencies list")
             .border_set(border::ROUNDED)
             .render(layout[1], buf);
+
+        self.render_dependencies_list(layout[1], buf);
     }
 
     fn render_footer(&self, area: Rect, buf: &mut Buffer) {
@@ -131,8 +143,6 @@ impl AppView {
                 "<Tab>,".blue().bold(),
                 " Previous ".into(),
                 "<Shift + Tab>,".blue().bold(),
-                " Check docs ".into(),
-                "<D>,".blue().bold(),
                 " Quit ".into(),
                 "<Q>".blue().bold(),
             ],
@@ -143,42 +153,40 @@ impl AppView {
 
     fn render_crates_list(&mut self, area: Rect, buf: &mut Buffer) {
         match self.current_tab_category {
-            CategoriesTabs::Graphics => StatefulWidget::render(
-                CratesListWidget::new(vec![CrateItemList::new(
-                    "clap".to_owned(),
-                    "a cool cli arg parser".to_owned(),
-                    "link to docs".to_owned(),
-                )]),
-                area,
-                buf,
-                &mut self.crates_list.state,
-            ),
-            CategoriesTabs::Concurrency => StatefulWidget::render(
-                CratesListWidget::new(vec![
-                    CrateItemList::new(
-                        "another thing concurrency".to_owned(),
-                        "multithreading concurrency".to_owned(),
-                        "link to docs concurrency".to_owned(),
-                    ),
-                    CrateItemList::new(
-                        "another thing concurrency".to_owned(),
-                        "multithreading concurrency".to_owned(),
-                        "link to docs concurrency".to_owned(),
-                    ),
-                ]),
-                area,
-                buf,
-                &mut self.crates_list.state,
-            ),
-            CategoriesTabs::Clis => StatefulWidget::render(
-                CratesListWidget::from(get_crates(
-                    "Clis".to_owned(),
-                    self.crates_list.crates.crates.len(),
-                )),
-                area,
-                buf,
-                &mut self.crates_list.state,
-            ),
+            CategoriesTabs::Graphics => {
+                let crates = get_crates("Concurrency".to_owned());
+
+                self.crates_list.crates_widget_list = CratesListWidget::from(crates.clone());
+                StatefulWidget::render(
+                    CratesListWidget::from(crates),
+                    area,
+                    buf,
+                    &mut self.crates_list.state,
+                );
+            }
+            CategoriesTabs::Concurrency => {
+                let crates = get_crates("Concurrency".to_owned());
+
+                self.crates_list.crates_widget_list = CratesListWidget::from(crates.clone());
+                StatefulWidget::render(
+                    CratesListWidget::from(crates),
+                    area,
+                    buf,
+                    &mut self.crates_list.state,
+                );
+            }
+            CategoriesTabs::Clis => {
+                let crates = get_crates("Clis".to_owned());
+
+                self.crates_list.crates_widget_list = CratesListWidget::from(crates.clone());
+
+                StatefulWidget::render(
+                    CratesListWidget::from(crates),
+                    area,
+                    buf,
+                    &mut self.crates_list.state,
+                );
+            }
         };
     }
 
@@ -187,7 +195,7 @@ impl AppView {
             Some(index) => {
                 if index == 0 {
                     1
-                } else if index >= self.crates_list.crates.crates.len() {
+                } else if index >= self.crates_list.crates_widget_list.crates.len() {
                     0
                 } else {
                     index + 1
@@ -203,7 +211,7 @@ impl AppView {
         let next_index = match self.crates_list.state.selected() {
             Some(index) => {
                 if index == 0 {
-                    self.crates_list.crates.crates.len()
+                    self.crates_list.crates_widget_list.crates.len()
                 } else {
                     index - 1
                 }
@@ -211,5 +219,26 @@ impl AppView {
             None => self.crates_list.state.selected().unwrap_or(0),
         };
         self.crates_list.state.select(Some(next_index));
+    }
+
+    fn render_dependencies_list(&mut self, area: Rect, buf: &mut Buffer) {
+        StatefulWidget::render(
+            DependenciesListWidget::new(vec![]),
+            area,
+            buf,
+            &mut self.dependencies_list.state,
+        );
+    }
+
+    fn unselect_all_crates(&mut self) {}
+
+    fn select_all_crates(&mut self) {}
+
+    fn toggle_dependencies(&mut self) {
+        self.crates_list
+            .crates_widget_list
+            .crates
+            .iter_mut()
+            .for_each(|crate_item| crate_item.description = "changed".into());
     }
 }
