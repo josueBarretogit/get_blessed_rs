@@ -1,5 +1,5 @@
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
-use std::{io, os::windows::raw, sync::Arc};
+use std::io;
 
 use ratatui::{
     prelude::*,
@@ -16,7 +16,9 @@ use super::widgets::{DependenciesListWidget, *};
 pub struct AppView {
     pub dependencies_list: DependenciesList,
     pub crates_list: CratesList,
-    pub current_tab_category: CategoriesTabs,
+    pub category_tabs: CategoriesTabs,
+    pub cli_crates: Vec<CrateItemList>,
+    pub graphics_crates: Vec<CrateItemList>,
     pub exit: bool,
 }
 
@@ -26,10 +28,29 @@ pub struct CratesList {
     state: ListState,
 }
 
+impl CratesList {
+   pub fn new(crates_widget_list : CratesListWidget, state: ListState) -> Self {
+        Self { crates_widget_list, state }
+    }
+
+}
+
 #[derive(Default, Clone)]
 pub struct DependenciesList {
     dependencies_widget: DependenciesListWidget,
     state: ListState,
+}
+
+impl DependenciesList {
+    pub fn new(
+        dependencies_widget: DependenciesListWidget,
+        state: ListState,
+    ) -> Self {
+        Self {
+            dependencies_widget,
+            state,
+        }
+    }
 }
 
 pub enum Screen {
@@ -72,6 +93,45 @@ impl AppView {
         frame.render_widget(self, frame.size());
     }
 
+    pub fn new() -> Self {
+        let cli_crates_from_page = get_crates("Clis".into());
+        let graphics_crates_from_page = get_crates("graphics".into());
+
+        let mut cli_crates: Vec<CrateItemList> = vec![];
+        let mut graphics_crates: Vec<CrateItemList> = vec![];
+
+        cli_crates_from_page.entries.iter().for_each(|entr| {
+            entr.crates.iter().for_each(|cr| {
+                cli_crates.push(CrateItemList::new(
+                    cr.name.to_owned(),
+                    cr.description.to_owned(),
+                    cr.docs.to_owned(),
+                    ItemListStatus::default(),
+                ))
+            })
+        });
+
+        graphics_crates_from_page.entries.iter().for_each(|entr| {
+            entr.crates.iter().for_each(|cr| {
+                graphics_crates.push(CrateItemList::new(
+                    cr.name.to_owned(),
+                    cr.description.to_owned(),
+                    cr.docs.to_owned(),
+                    ItemListStatus::default(),
+                ))
+            })
+        });
+
+        Self {
+            dependencies_list: DependenciesList::default(),
+            crates_list: CratesList::default(),
+            category_tabs: CategoriesTabs::default(),
+            cli_crates,
+            graphics_crates,
+            exit: false,
+        }
+    }
+
     fn handle_events(&mut self) -> io::Result<()> {
         match event::read()? {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
@@ -90,6 +150,7 @@ impl AppView {
             KeyCode::Down => self.scroll_down(),
             KeyCode::Up => self.scroll_up(),
             KeyCode::Enter => self.toggle_dependencies(),
+            KeyCode::PageUp => self.add_dependency(),
             _ => {}
         }
     }
@@ -99,15 +160,15 @@ impl AppView {
     }
 
     pub fn next_tab(&mut self) {
-        self.current_tab_category = self.current_tab_category.next();
+        self.category_tabs = self.category_tabs.next();
     }
 
     pub fn previos_tab(&mut self) {
-        self.current_tab_category = self.current_tab_category.previous();
+        self.category_tabs = self.category_tabs.previous();
     }
 
     fn render_tabs(&self, area: Rect, buf: &mut Buffer) {
-        Widget::render(self.current_tab_category, area, buf);
+        Widget::render(self.category_tabs, area, buf);
     }
 
     fn render_main_section(&mut self, area: Rect, buf: &mut Buffer) {
@@ -152,13 +213,10 @@ impl AppView {
     }
 
     fn render_crates_list(&mut self, area: Rect, buf: &mut Buffer) {
-        match self.current_tab_category {
+        match self.category_tabs {
             CategoriesTabs::Graphics => {
-                let crates = get_crates("Concurrency".to_owned());
-
-                self.crates_list.crates_widget_list = CratesListWidget::from(crates.clone());
                 StatefulWidget::render(
-                    CratesListWidget::from(crates),
+                    CratesListWidget::new(&self.graphics_crates),
                     area,
                     buf,
                     &mut self.crates_list.state,
@@ -176,12 +234,10 @@ impl AppView {
                 );
             }
             CategoriesTabs::Clis => {
-                let crates = get_crates("Clis".to_owned());
-
-                self.crates_list.crates_widget_list = CratesListWidget::from(crates.clone());
+                self.crates_list.crates_widget_list =  CratesListWidget::new(&self.cli_crates);
 
                 StatefulWidget::render(
-                    CratesListWidget::from(crates),
+                    CratesListWidget::new(&self.cli_crates),
                     area,
                     buf,
                     &mut self.crates_list.state,
@@ -233,6 +289,11 @@ impl AppView {
     fn unselect_all_crates(&mut self) {}
 
     fn select_all_crates(&mut self) {}
+
+    fn add_dependency(&mut self) {
+        self.dependencies_list.dependencies_widget =
+            DependenciesListWidget::new(vec!["a".into(), "b".into()]);
+    }
 
     fn toggle_dependencies(&mut self) {
         self.crates_list

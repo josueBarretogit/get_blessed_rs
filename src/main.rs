@@ -10,10 +10,9 @@ mod utils;
 mod view;
 
 fn main() {
-
     let mut terminal = init().unwrap();
 
-    let app_result = AppView::default().run(&mut terminal);
+    let app_result = AppView::new().run(&mut terminal);
 
     restore().unwrap()
 }

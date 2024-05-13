@@ -12,14 +12,14 @@ pub struct Footer<'a> {
     version: &'a str,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub enum ItemListStatus {
     Selected,
     #[default]
     Unselected,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct CrateItemList {
     pub name: String,
     pub description: String,
@@ -53,12 +53,12 @@ impl StatefulWidget for DependenciesListWidget {
 }
 
 impl CrateItemList {
-    pub fn new(name: String, description: String, docs: String) -> Self {
+    pub fn new(name: String, description: String, docs: String, status: ItemListStatus) -> Self {
         Self {
             name,
             description,
             docs,
-            status: ItemListStatus::Unselected,
+            status,
         }
     }
 }
@@ -74,7 +74,16 @@ impl StatefulWidget for CratesListWidget {
         let list = List::new(
             self.crates
                 .iter()
-                .map(|crate_item| format!("{}, {}", crate_item.description, crate_item.name))
+                .map(|crate_item| {
+                    let is_selected = match crate_item.status {
+                        ItemListStatus::Selected => "✓",
+                        ItemListStatus::Unselected => "☐",
+                    };
+                    format!(
+                        "{}, {},  {}",
+                        crate_item.description, crate_item.name, is_selected
+                    )
+                })
                 .collect::<Vec<String>>(),
         )
         .block(Block::default().padding(Padding::uniform(2)))
@@ -87,8 +96,8 @@ impl StatefulWidget for CratesListWidget {
 }
 
 impl CratesListWidget {
-    pub fn new(crates: Vec<CrateItemList>) -> Self {
-        Self { crates }
+    pub fn new(crates: &Vec<CrateItemList>) -> Self {
+        Self { crates : crates.to_vec()}
     }
 }
 
@@ -97,10 +106,14 @@ impl From<crate::backend::Table> for CratesListWidget {
         let mut crates: Vec<CrateItemList> = vec![];
 
         value.entries.iter().for_each(|entry| {
-            entry
-                .crates
-                .iter()
-                .for_each(|cr| crates.push(CrateItemList::from(cr)));
+            entry.crates.iter().for_each(|cr| {
+                crates.push(CrateItemList::new(
+                    cr.name.to_owned(),
+                    cr.description.to_owned(),
+                    cr.docs.to_owned(),
+                    ItemListStatus::Unselected,
+                ))
+            });
         });
 
         Self { crates }
