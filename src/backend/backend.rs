@@ -1,11 +1,9 @@
-use fake::faker::lorem::en::Words;
-use fake::{ Fake, Faker}; 
+use fake::faker::lorem::en::{Word, Words};
 use fake::faker::name::raw::*;
 use fake::locales::*;
+use fake::{Fake, Faker};
 
 use super::{Crates, Table, TableEntry};
-
-
 
 pub fn get_crates(category: String) -> Table {
     let entries1 = vec![
@@ -15,12 +13,12 @@ pub fn get_crates(category: String) -> Table {
                 Crates {
                     name: Name(EN).fake(),
                     description: Name(EN).fake(),
-                    docs: "httpp://".into(),
+                    docs: Word().fake(),
                 },
                 Crates {
-                    name: "time".into(),
-                    description: "de facto standar".into(),
-                    docs: "httpp://".into(),
+                    name: Name(EN).fake(),
+                    description: Name(EN).fake(),
+                    docs: Word().fake(),
                 },
             ],
         },
@@ -28,14 +26,14 @@ pub fn get_crates(category: String) -> Table {
             use_case: "a".into(),
             crates: vec![
                 Crates {
-                    name: "rand".into(),
-                    description: "de facto standar".into(),
-                    docs: "httpp://".into(),
+                    name: Name(EN).fake(),
+                    description: Name(EN).fake(),
+                    docs: Word().fake(),
                 },
                 Crates {
-                    name: "fancy-regex".into(),
-                    description: "de facto standar".into(),
-                    docs: "httpp://".into(),
+                    name: Name(EN).fake(),
+                    description: Name(EN).fake(),
+                    docs: Word().fake(),
                 },
             ],
         },

@@ -12,7 +12,7 @@ pub struct Footer<'a> {
     version: &'a str,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ItemListStatus {
     Selected,
     #[default]
@@ -63,7 +63,7 @@ impl CrateItemList {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct CratesListWidget {
     pub crates: Vec<CrateItemList>,
 }
@@ -97,7 +97,9 @@ impl StatefulWidget for CratesListWidget {
 
 impl CratesListWidget {
     pub fn new(crates: &Vec<CrateItemList>) -> Self {
-        Self { crates : crates.to_vec()}
+        Self {
+            crates: crates.to_vec(),
+        }
     }
 }
 

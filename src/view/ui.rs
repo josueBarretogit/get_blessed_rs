@@ -8,7 +8,11 @@ use ratatui::{
     widgets::{block::*, *},
 };
 
-use crate::{backend::backend::get_crates, tui::tui::Tui};
+use crate::{
+    backend::backend::get_crates,
+    tui::tui::Tui,
+    utils::{toggle_dependencies_all, toggle_one_dependency, toggle_status_all},
+};
 
 use super::widgets::{DependenciesListWidget, *};
 
@@ -19,6 +23,7 @@ pub struct AppView {
     pub category_tabs: CategoriesTabs,
     pub cli_crates: Vec<CrateItemList>,
     pub graphics_crates: Vec<CrateItemList>,
+    pub dependencies_added: Vec<String>,
     pub exit: bool,
 }
 
@@ -29,10 +34,12 @@ pub struct CratesList {
 }
 
 impl CratesList {
-   pub fn new(crates_widget_list : CratesListWidget, state: ListState) -> Self {
-        Self { crates_widget_list, state }
+    pub fn new(crates_widget_list: CratesListWidget, state: ListState) -> Self {
+        Self {
+            crates_widget_list,
+            state,
+        }
     }
-
 }
 
 #[derive(Default, Clone)]
@@ -42,10 +49,7 @@ pub struct DependenciesList {
 }
 
 impl DependenciesList {
-    pub fn new(
-        dependencies_widget: DependenciesListWidget,
-        state: ListState,
-    ) -> Self {
+    pub fn new(dependencies_widget: DependenciesListWidget, state: ListState) -> Self {
         Self {
             dependencies_widget,
             state,
@@ -128,6 +132,7 @@ impl AppView {
             category_tabs: CategoriesTabs::default(),
             cli_crates,
             graphics_crates,
+            dependencies_added: Vec::new(),
             exit: false,
         }
     }
@@ -149,8 +154,8 @@ impl AppView {
             KeyCode::BackTab => self.previos_tab(),
             KeyCode::Down => self.scroll_down(),
             KeyCode::Up => self.scroll_up(),
-            KeyCode::Enter => self.toggle_dependencies(),
-            KeyCode::PageUp => self.add_dependency(),
+            KeyCode::Enter => self.toggle_select_all_dependencies(),
+            KeyCode::Char('a') => self.toggle_select_dependencie(),
             _ => {}
         }
     }
@@ -182,8 +187,10 @@ impl AppView {
             .title_alignment(Alignment::Left)
             .title_bottom(Line::from("Check docs").right_aligned())
             .title_bottom(Line::from("<D>".blue()).right_aligned())
-            .title_bottom(Line::from("Select ").right_aligned())
-            .title_bottom(Line::from("<Space>".blue()).right_aligned())
+            .title_bottom(Line::from(" Toggle select ").right_aligned())
+            .title_bottom(Line::from("<a>".blue()).right_aligned())
+            .title_bottom(Line::from(" Toggle select all ").right_aligned())
+            .title_bottom(Line::from("<Enter>".blue()).right_aligned())
             .border_set(border::ROUNDED)
             .render(layout[0], buf);
 
@@ -215,8 +222,9 @@ impl AppView {
     fn render_crates_list(&mut self, area: Rect, buf: &mut Buffer) {
         match self.category_tabs {
             CategoriesTabs::Graphics => {
+                self.crates_list.crates_widget_list = CratesListWidget::new(&self.graphics_crates);
                 StatefulWidget::render(
-                    CratesListWidget::new(&self.graphics_crates),
+                    self.crates_list.crates_widget_list.clone(),
                     area,
                     buf,
                     &mut self.crates_list.state,
@@ -234,16 +242,25 @@ impl AppView {
                 );
             }
             CategoriesTabs::Clis => {
-                self.crates_list.crates_widget_list =  CratesListWidget::new(&self.cli_crates);
+                self.crates_list.crates_widget_list = CratesListWidget::new(&self.cli_crates);
 
                 StatefulWidget::render(
-                    CratesListWidget::new(&self.cli_crates),
+                    self.crates_list.crates_widget_list.clone(),
                     area,
                     buf,
                     &mut self.crates_list.state,
                 );
             }
         };
+    }
+
+    fn render_dependencies_list(&mut self, area: Rect, buf: &mut Buffer) {
+        StatefulWidget::render(
+            DependenciesListWidget::new(self.dependencies_added.clone()),
+            area,
+            buf,
+            &mut self.dependencies_list.state,
+        );
     }
 
     fn scroll_down(&mut self) {
@@ -277,29 +294,33 @@ impl AppView {
         self.crates_list.state.select(Some(next_index));
     }
 
-    fn render_dependencies_list(&mut self, area: Rect, buf: &mut Buffer) {
-        StatefulWidget::render(
-            DependenciesListWidget::new(vec![]),
-            area,
-            buf,
-            &mut self.dependencies_list.state,
-        );
+    fn toggle_select_all_dependencies(&mut self) {
+        match self.category_tabs {
+            CategoriesTabs::Clis => {
+                toggle_status_all(&mut self.cli_crates);
+                toggle_dependencies_all(&self.cli_crates, &mut self.dependencies_added);
+            }
+            CategoriesTabs::Graphics => {
+                toggle_status_all(&mut self.graphics_crates);
+                toggle_dependencies_all(&self.graphics_crates, &mut self.dependencies_added);
+            }
+            _ => unimplemented!(),
+        }
     }
 
-    fn unselect_all_crates(&mut self) {}
-
-    fn select_all_crates(&mut self) {}
-
-    fn add_dependency(&mut self) {
-        self.dependencies_list.dependencies_widget =
-            DependenciesListWidget::new(vec!["a".into(), "b".into()]);
-    }
-
-    fn toggle_dependencies(&mut self) {
-        self.crates_list
-            .crates_widget_list
-            .crates
-            .iter_mut()
-            .for_each(|crate_item| crate_item.description = "changed".into());
+    fn toggle_select_dependencie(&mut self) {
+        if let Some(index_crate_selected) = self.crates_list.state.selected() {
+            match self.category_tabs {
+                CategoriesTabs::Clis => toggle_one_dependency(
+                    &mut self.cli_crates[index_crate_selected],
+                    &mut self.dependencies_added,
+                ),
+                CategoriesTabs::Graphics => toggle_one_dependency(
+                    &mut self.graphics_crates[index_crate_selected],
+                    &mut self.dependencies_added,
+                ),
+                _ => unimplemented!(),
+            }
+        }
     }
 }
