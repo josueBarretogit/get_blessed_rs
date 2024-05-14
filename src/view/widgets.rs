@@ -63,6 +63,25 @@ impl CrateItemList {
     }
 }
 
+impl Into<Vec<CrateItemList>> for crate::backend::Table {
+    fn into(self) -> Vec<CrateItemList> {
+        let mut items: Vec<CrateItemList> = vec![];
+
+        self.entries.iter().for_each(|entr| {
+            entr.crates.iter().for_each(|cr| {
+                items.push(CrateItemList::new(
+                    cr.name.to_owned(),
+                    cr.description.to_owned(),
+                    cr.docs.to_owned(),
+                    ItemListStatus::default(),
+                ))
+            })
+        });
+
+        items
+    }
+}
+
 #[derive(Default, Clone)]
 pub struct CratesListWidget {
     pub crates: Vec<CrateItemList>,
@@ -80,8 +99,8 @@ impl StatefulWidget for CratesListWidget {
                         ItemListStatus::Unselected => "☐",
                     };
                     format!(
-                        "{}, {},  {}",
-                        crate_item.description, crate_item.name, is_selected
+                        "{}, {}, {}",
+                        crate_item.name, crate_item.description, is_selected
                     )
                 })
                 .collect::<Vec<String>>(),
@@ -99,36 +118,6 @@ impl CratesListWidget {
     pub fn new(crates: &Vec<CrateItemList>) -> Self {
         Self {
             crates: crates.to_vec(),
-        }
-    }
-}
-
-impl From<crate::backend::Table> for CratesListWidget {
-    fn from(value: crate::backend::Table) -> Self {
-        let mut crates: Vec<CrateItemList> = vec![];
-
-        value.entries.iter().for_each(|entry| {
-            entry.crates.iter().for_each(|cr| {
-                crates.push(CrateItemList::new(
-                    cr.name.to_owned(),
-                    cr.description.to_owned(),
-                    cr.docs.to_owned(),
-                    ItemListStatus::Unselected,
-                ))
-            });
-        });
-
-        Self { crates }
-    }
-}
-
-impl From<&crate::backend::Crates> for CrateItemList {
-    fn from(value: &crate::backend::Crates) -> Self {
-        Self {
-            name: value.name.to_owned(),
-            description: value.description.to_owned(),
-            docs: value.docs.to_owned(),
-            status: ItemListStatus::default(),
         }
     }
 }

@@ -18,12 +18,12 @@ use super::widgets::{DependenciesListWidget, *};
 
 #[derive(Default)]
 pub struct AppView {
-    pub dependencies_list: DependenciesList,
+    pub dependencies_to_add_list: DependenciesList,
     pub crates_list: CratesList,
     pub category_tabs: CategoriesTabs,
     pub cli_crates: Vec<CrateItemList>,
     pub graphics_crates: Vec<CrateItemList>,
-    pub dependencies_added: Vec<String>,
+    pub concurrency_crates: Vec<CrateItemList>,
     pub exit: bool,
 }
 
@@ -33,33 +33,25 @@ pub struct CratesList {
     state: ListState,
 }
 
-impl CratesList {
-    pub fn new(crates_widget_list: CratesListWidget, state: ListState) -> Self {
-        Self {
-            crates_widget_list,
-            state,
-        }
-    }
-}
-
 #[derive(Default, Clone)]
 pub struct DependenciesList {
     dependencies_widget: DependenciesListWidget,
+    dependencies_to_add: Vec<String>,
     state: ListState,
 }
 
 impl DependenciesList {
-    pub fn new(dependencies_widget: DependenciesListWidget, state: ListState) -> Self {
+    pub fn new(
+        dependencies_widget: DependenciesListWidget,
+        state: ListState,
+        dependencies_to_add: Vec<String>,
+    ) -> Self {
         Self {
             dependencies_widget,
             state,
+            dependencies_to_add,
         }
     }
-}
-
-pub enum Screen {
-    Selecting,
-    Reviewing,
 }
 
 impl Widget for &mut AppView {
@@ -100,39 +92,15 @@ impl AppView {
     pub fn new() -> Self {
         let cli_crates_from_page = get_crates("Clis".into());
         let graphics_crates_from_page = get_crates("graphics".into());
-
-        let mut cli_crates: Vec<CrateItemList> = vec![];
-        let mut graphics_crates: Vec<CrateItemList> = vec![];
-
-        cli_crates_from_page.entries.iter().for_each(|entr| {
-            entr.crates.iter().for_each(|cr| {
-                cli_crates.push(CrateItemList::new(
-                    cr.name.to_owned(),
-                    cr.description.to_owned(),
-                    cr.docs.to_owned(),
-                    ItemListStatus::default(),
-                ))
-            })
-        });
-
-        graphics_crates_from_page.entries.iter().for_each(|entr| {
-            entr.crates.iter().for_each(|cr| {
-                graphics_crates.push(CrateItemList::new(
-                    cr.name.to_owned(),
-                    cr.description.to_owned(),
-                    cr.docs.to_owned(),
-                    ItemListStatus::default(),
-                ))
-            })
-        });
+        let concurrency_crates = get_crates("graphics".into());
 
         Self {
-            dependencies_list: DependenciesList::default(),
+            dependencies_to_add_list: DependenciesList::default(),
             crates_list: CratesList::default(),
             category_tabs: CategoriesTabs::default(),
-            cli_crates,
-            graphics_crates,
-            dependencies_added: Vec::new(),
+            cli_crates: cli_crates_from_page.into(),
+            graphics_crates: graphics_crates_from_page.into(),
+            concurrency_crates: concurrency_crates.into(),
             exit: false,
         }
     }
@@ -186,7 +154,7 @@ impl AppView {
             .title("Crates")
             .title_alignment(Alignment::Left)
             .title_bottom(Line::from("Check docs").right_aligned())
-            .title_bottom(Line::from("<D>".blue()).right_aligned())
+            .title_bottom(Line::from("<d>".blue()).right_aligned())
             .title_bottom(Line::from(" Toggle select ").right_aligned())
             .title_bottom(Line::from("<a>".blue()).right_aligned())
             .title_bottom(Line::from(" Toggle select all ").right_aligned())
@@ -212,7 +180,7 @@ impl AppView {
                 " Previous ".into(),
                 "<Shift + Tab>,".blue().bold(),
                 " Quit ".into(),
-                "<Q>".blue().bold(),
+                "<q>".blue().bold(),
             ],
             "V0.2.0",
         )
@@ -231,11 +199,10 @@ impl AppView {
                 );
             }
             CategoriesTabs::Concurrency => {
-                let crates = get_crates("Concurrency".to_owned());
-
-                self.crates_list.crates_widget_list = CratesListWidget::from(crates.clone());
+                self.crates_list.crates_widget_list =
+                    CratesListWidget::new(&self.concurrency_crates);
                 StatefulWidget::render(
-                    CratesListWidget::from(crates),
+                    self.crates_list.crates_widget_list.clone(),
                     area,
                     buf,
                     &mut self.crates_list.state,
@@ -256,10 +223,10 @@ impl AppView {
 
     fn render_dependencies_list(&mut self, area: Rect, buf: &mut Buffer) {
         StatefulWidget::render(
-            DependenciesListWidget::new(self.dependencies_added.clone()),
+            DependenciesListWidget::new(self.dependencies_to_add_list.dependencies_to_add.clone()),
             area,
             buf,
-            &mut self.dependencies_list.state,
+            &mut self.dependencies_to_add_list.state,
         );
     }
 
@@ -298,13 +265,25 @@ impl AppView {
         match self.category_tabs {
             CategoriesTabs::Clis => {
                 toggle_status_all(&mut self.cli_crates);
-                toggle_dependencies_all(&self.cli_crates, &mut self.dependencies_added);
+                toggle_dependencies_all(
+                    &self.cli_crates,
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                );
             }
             CategoriesTabs::Graphics => {
                 toggle_status_all(&mut self.graphics_crates);
-                toggle_dependencies_all(&self.graphics_crates, &mut self.dependencies_added);
+                toggle_dependencies_all(
+                    &self.graphics_crates,
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                );
             }
-            _ => unimplemented!(),
+            CategoriesTabs::Concurrency => {
+                toggle_status_all(&mut self.concurrency_crates);
+                toggle_dependencies_all(
+                    &self.concurrency_crates,
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                );
+            }
         }
     }
 
@@ -313,13 +292,16 @@ impl AppView {
             match self.category_tabs {
                 CategoriesTabs::Clis => toggle_one_dependency(
                     &mut self.cli_crates[index_crate_selected],
-                    &mut self.dependencies_added,
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
                 ),
                 CategoriesTabs::Graphics => toggle_one_dependency(
                     &mut self.graphics_crates[index_crate_selected],
-                    &mut self.dependencies_added,
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
                 ),
-                _ => unimplemented!(),
+                CategoriesTabs::Concurrency => toggle_one_dependency(
+                    &mut self.concurrency_crates[index_crate_selected],
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                ),
             }
         }
     }

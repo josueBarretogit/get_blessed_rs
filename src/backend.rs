@@ -19,3 +19,25 @@ pub struct TableEntry {
 pub struct Table {
     pub entries: Vec<TableEntry>,
 }
+
+#[derive(Debug, Clone)]
+pub enum Categories {
+    ErrorHandling,
+    Loggin,
+    LanguageExtensions,
+    System,
+    Math,
+    FFI,
+    Cryptography,
+    Networking,
+    Http,
+    WebSockets,
+    Grpc,
+    Databases,
+    Clis,
+    Utility,
+    TerminalRendering,
+    Concurrency,
+    Graphics,
+    GameDevelopment,
+}
