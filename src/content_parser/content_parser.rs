@@ -1,7 +1,7 @@
 use scraper::{html, selectable::Selectable, selector, Html, Selector};
 
 use crate::{
-    backend::{Categories, Table, TableEntry},
+    backend::{Categories, Crates, Table, TableEntry},
     scraper::scraper::scrape_site,
 };
 
@@ -20,26 +20,48 @@ impl ContentParser {
         }
     }
 
-    pub fn get_clis_tables(&self) -> Table {
+    pub fn get_clis_tables(&self) -> [Table; 3] {
         let selector = Selector::parse("#section-cli-tools > section > table").unwrap();
 
-        let entry_selector = Selector::parse("tr").unwrap();
+        let entry_selector = Selector::parse("tbody > tr  td").unwrap();
 
         //Each p contains the name of the crate
-        let crates_selector = Selector::parse("td > p > a").unwrap();
+        let docs_selector = Selector::parse("p > a").unwrap();
+        let name_selector = Selector::parse("p > b > a").unwrap();
+        let description_selector = Selector::parse("p").unwrap();
 
         let cli_section = self.content.select(&selector);
 
-        let entries: Vec<TableEntry> = Vec::new();
+        let mut entries: Vec<TableEntry> = Vec::new();
 
         cli_section.for_each(|tbl| {
-            let entry = tbl.select(&entry_selector);
+            let contents = tbl.select(&entry_selector);
+            let use_case = String::new();
 
-            entry.for_each(|cra| {
-                let crates = cra.select(&crates_selector);
+            let mut crates: Vec<Crates> = Vec::new();
+
+            let crates_elements = tbl.select(&name_selector);
+
+            for ele in crates_elements {
+                crates.push(Crates {
+                    name: ele.inner_html(),
+                    description: "aa".into(),
+                    docs: "aaa".into(),
+                })
+            }
+
+            entries.push(TableEntry {
+                use_case: "".into(),
+                crates,
             })
         });
 
-        Table { entries: vec![] }
+        println!("{:?}", entries);
+
+        [
+            Table { entries: vec![] },
+            Table { entries: vec![] },
+            Table { entries: vec![] },
+        ]
     }
 }
