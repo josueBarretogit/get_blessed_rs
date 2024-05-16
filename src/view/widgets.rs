@@ -42,7 +42,13 @@ impl StatefulWidget for DependenciesListWidget {
     type State = ListState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let list = List::new(self.dependencies)
+        let items: Vec<Line<'_>> = self
+            .dependencies
+            .iter()
+            .map(|dep| Line::from(vec![dep.into(), " ✓ ".blue()]))
+            .collect();
+
+        let list = List::new(items)
             .block(
                 Block::bordered()
                     .padding(Padding::uniform(2))
@@ -89,6 +95,24 @@ impl Into<Vec<CrateItemList>> for crate::backend::Table {
 #[derive(Default, Clone)]
 pub struct CratesListWidget {
     pub crates: Vec<CrateItemList>,
+}
+
+impl From<Vec<crate::backend::Crates>> for CratesListWidget {
+    fn from(value: Vec<crate::backend::Crates>) -> Self {
+        Self {
+            crates: value
+                .iter()
+                .map(|cra| {
+                    CrateItemList::new(
+                        cra.name.to_owned(),
+                        cra.description.to_owned(),
+                        cra.docs.to_owned(),
+                        ItemListStatus::Unselected,
+                    )
+                })
+                .collect(),
+        }
+    }
 }
 
 impl StatefulWidget for CratesListWidget {

@@ -101,27 +101,33 @@ impl AppView {
     }
 
     pub fn new() -> Self {
-        let cli_crates_from_page = get_crates(Categories::Clis);
-        let graphics_crates_from_page = get_crates(Categories::Graphics);
-        let concurrency_crates = get_crates(Categories::Concurrency);
+        let crates = get_crates(Categories::FFI);
 
-        let loggin = get_crates(Categories::Concurrency);
-        let language = get_crates(Categories::Concurrency);
-        let system = get_crates(Categories::Concurrency);
-        let math = get_crates(Categories::Concurrency);
-        let websockets = get_crates(Categories::Concurrency);
-        let utility = get_crates(Categories::Concurrency);
-        let databasae = get_crates(Categories::Concurrency);
-        let terminalre = get_crates(Categories::Concurrency);
-        let grpc = get_crates(Categories::Concurrency);
-        let utility = get_crates(Categories::Concurrency);
+        let cli_crates = get_crates(Categories::Clis);
+        let graphics_crates = get_crates(Categories::Graphics);
+        let concurrency_crates = get_crates(Categories::Concurrency);
+        let loggin = get_crates(Categories::Loggin);
+        let language = get_crates(Categories::LanguageExtensions);
+        let system = get_crates(Categories::System);
+        let math = get_crates(Categories::Math);
+        let websockets = get_crates(Categories::WebSockets);
+        let databasae = get_crates(Categories::Databases);
+        let terminalre = get_crates(Categories::TerminalRendering);
+        let grpc = get_crates(Categories::Grpc);
+        let utility = get_crates(Categories::Utility);
+        let gamedevelopment_crates = get_crates(Categories::GameDevelopment);
+        let networking_crates = get_crates(Categories::Networking);
+
+        let mut list_state = ListState::default();
+
+        list_state.select(Some(0));
 
         Self {
             dependencies_to_add_list: DependenciesList::default(),
             crates_list: CratesList::default(),
             category_tabs: CategoriesTabs::default(),
-            cli_crates: cli_crates_from_page.into(),
-            graphics_crates: graphics_crates_from_page.into(),
+            cli_crates: cli_crates.into(),
+            graphics_crates: graphics_crates.into(),
             concurrency_crates: concurrency_crates.into(),
             loggin: loggin.into(),
             language: language.into(),
@@ -133,7 +139,7 @@ impl AppView {
             terminalre: terminalre.into(),
             grpc: grpc.into(),
 
-            categories_list_state: ListState::default(),
+            categories_list_state: list_state,
 
             exit: false,
         }
@@ -167,16 +173,17 @@ impl AppView {
     }
 
     pub fn next_tab(&mut self) {
+        self.category_tabs = self.category_tabs.next();
+
         self.categories_list_state
             .select(Some(self.category_tabs as usize));
-        self.category_tabs = self.category_tabs.next();
     }
 
     pub fn previos_tab(&mut self) {
         self.category_tabs = self.category_tabs.previous();
 
         self.categories_list_state
-            .select(Some(self.category_tabs as usize))
+            .select(Some(self.category_tabs as usize));
     }
 
     fn render_categories_list(&mut self, area: Rect, buf: &mut Buffer) {

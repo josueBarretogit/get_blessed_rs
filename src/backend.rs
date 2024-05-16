@@ -20,11 +20,6 @@ pub struct Table {
     pub entries: Vec<TableEntry>,
 }
 
-#[derive(Default, Debug, Clone, Dummy)]
-pub struct CratesContent {
-    pub tables: Vec<Table>,
-}
-
 #[derive(Debug, Clone)]
 pub enum Categories {
     ErrorHandling,
