@@ -43,7 +43,11 @@ impl StatefulWidget for DependenciesListWidget {
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let list = List::new(self.dependencies)
-            .block(Block::default().padding(Padding::uniform(2)))
+            .block(
+                Block::bordered()
+                    .padding(Padding::uniform(2))
+                    .title("Dependencies to add"),
+            )
             .highlight_style(Style::default().blue())
             .highlight_symbol("* ")
             .direction(ListDirection::TopToBottom);
@@ -147,9 +151,26 @@ impl<'a> Footer<'a> {
 #[derive(Default, Clone, Copy, Display, FromRepr, EnumIter)]
 pub enum CategoriesTabs {
     #[default]
-    Graphics,
+    General,
     Clis,
+    ErrorHandling,
+    Loggin,
+    LanguageExtensions,
+    System,
+    Math,
+    FFI,
+    Cryptography,
+    Networking,
+    Http,
+    WebSockets,
+    Grpc,
+    Databases,
+    Utility,
+    TerminalRendering,
     Concurrency,
+    GUI,
+    GameDevelopment,
+    Graphics,
 }
 
 impl CategoriesTabs {
@@ -166,26 +187,20 @@ impl CategoriesTabs {
     }
 }
 
-impl Widget for CategoriesTabs {
-    fn render(self, area: Rect, buf: &mut Buffer)
-    where
-        Self: Sized,
-    {
-        let block_tabs = Block::default()
-            .title("Categories")
-            .borders(Borders::ALL)
-            .border_set(border::ROUNDED);
+impl StatefulWidget for CategoriesTabs {
+    type State = ListState;
 
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let categories: Vec<String> = CategoriesTabs::iter()
-            .map(|category| format!(" {category} "))
+            .map(|category| format!("{category}"))
             .collect();
 
-        Tabs::new(categories)
-            .block(block_tabs)
+        let list = List::new(categories)
             .style(Style::default().white())
-            .highlight_style(Style::default().yellow())
-            .select(self as usize)
-            .divider(symbols::DOT)
-            .render(area, buf)
+            .highlight_style(Style::default().blue())
+            .highlight_symbol(">> ")
+            .highlight_style(Style::default().yellow());
+
+        StatefulWidget::render(list, area, buf, state);
     }
 }

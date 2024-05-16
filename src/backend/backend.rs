@@ -3,9 +3,9 @@ use fake::faker::name::raw::*;
 use fake::locales::*;
 use fake::{Fake, Faker};
 
-use super::{Crates, Table, TableEntry};
+use super::{Categories, Crates, Table, TableEntry};
 
-pub fn get_crates(category: String) -> Table {
+pub fn get_crates(category: Categories) -> Table {
     let entries1 = vec![
         TableEntry {
             use_case: Faker.fake(),

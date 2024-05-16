@@ -1,5 +1,5 @@
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
-use std::io;
+use std::{io, usize};
 
 use ratatui::{
     prelude::*,
@@ -9,7 +9,7 @@ use ratatui::{
 };
 
 use crate::{
-    backend::backend::get_crates,
+    backend::{backend::get_crates, Categories},
     tui::tui::Tui,
     utils::{toggle_dependencies_all, toggle_one_dependency, toggle_status_all},
 };
@@ -25,6 +25,17 @@ pub struct AppView {
     pub graphics_crates: Vec<CrateItemList>,
     pub concurrency_crates: Vec<CrateItemList>,
     pub exit: bool,
+    categories_list_state: ListState,
+
+    loggin: Vec<CrateItemList>,
+    language: Vec<CrateItemList>,
+    system: Vec<CrateItemList>,
+    math: Vec<CrateItemList>,
+    websockets: Vec<CrateItemList>,
+    databasae: Vec<CrateItemList>,
+    terminalre: Vec<CrateItemList>,
+    grpc: Vec<CrateItemList>,
+    utility: Vec<CrateItemList>,
 }
 
 #[derive(Default)]
@@ -60,19 +71,19 @@ impl Widget for &mut AppView {
         Self: Sized,
     {
         let main_layout = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints(vec![
-                Constraint::Length(3),
-                Constraint::Min(1),
-                Constraint::Length(2),
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(24),
+                Constraint::Percentage(51),
+                Constraint::Percentage(25),
             ])
             .split(area);
 
-        self.render_tabs(main_layout[0], buf);
+        self.render_categories_list(main_layout[0], buf);
 
         self.render_main_section(main_layout[1], buf);
 
-        self.render_footer(main_layout[2], buf)
+        self.render_dependencies_list(main_layout[2], buf);
     }
 }
 
@@ -90,9 +101,20 @@ impl AppView {
     }
 
     pub fn new() -> Self {
-        let cli_crates_from_page = get_crates("Clis".into());
-        let graphics_crates_from_page = get_crates("graphics".into());
-        let concurrency_crates = get_crates("graphics".into());
+        let cli_crates_from_page = get_crates(Categories::Clis);
+        let graphics_crates_from_page = get_crates(Categories::Graphics);
+        let concurrency_crates = get_crates(Categories::Concurrency);
+
+        let loggin = get_crates(Categories::Concurrency);
+        let language = get_crates(Categories::Concurrency);
+        let system = get_crates(Categories::Concurrency);
+        let math = get_crates(Categories::Concurrency);
+        let websockets = get_crates(Categories::Concurrency);
+        let utility = get_crates(Categories::Concurrency);
+        let databasae = get_crates(Categories::Concurrency);
+        let terminalre = get_crates(Categories::Concurrency);
+        let grpc = get_crates(Categories::Concurrency);
+        let utility = get_crates(Categories::Concurrency);
 
         Self {
             dependencies_to_add_list: DependenciesList::default(),
@@ -101,6 +123,18 @@ impl AppView {
             cli_crates: cli_crates_from_page.into(),
             graphics_crates: graphics_crates_from_page.into(),
             concurrency_crates: concurrency_crates.into(),
+            loggin: loggin.into(),
+            language: language.into(),
+            system: system.into(),
+            math: math.into(),
+            websockets: websockets.into(),
+            utility: utility.into(),
+            databasae: databasae.into(),
+            terminalre: terminalre.into(),
+            grpc: grpc.into(),
+
+            categories_list_state: ListState::default(),
+
             exit: false,
         }
     }
@@ -133,43 +167,70 @@ impl AppView {
     }
 
     pub fn next_tab(&mut self) {
+        self.categories_list_state
+            .select(Some(self.category_tabs as usize));
         self.category_tabs = self.category_tabs.next();
     }
 
     pub fn previos_tab(&mut self) {
         self.category_tabs = self.category_tabs.previous();
+
+        self.categories_list_state
+            .select(Some(self.category_tabs as usize))
     }
 
-    fn render_tabs(&self, area: Rect, buf: &mut Buffer) {
-        Widget::render(self.category_tabs, area, buf);
+    fn render_categories_list(&mut self, area: Rect, buf: &mut Buffer) {
+        let block_tabs = Block::default()
+            .title(Title::from(Line::from(vec![
+                "Next ".into(),
+                "<Tab> ".blue(),
+                "Previous ".into(),
+                "<Shift + Tab>".blue(),
+            ])))
+            .title_position(Position::Bottom)
+            .borders(Borders::ALL)
+            .border_set(border::ROUNDED);
+
+        block_tabs.render(area, buf);
+
+        let margin = area.inner(&Margin {
+            horizontal: 5,
+            vertical: 3,
+        });
+
+        StatefulWidget::render(
+            self.category_tabs,
+            margin,
+            buf,
+            &mut self.categories_list_state,
+        );
     }
 
     fn render_main_section(&mut self, area: Rect, buf: &mut Buffer) {
-        let layout = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints(vec![Constraint::Percentage(75), Constraint::Percentage(25)])
-            .split(area);
-
+        let instructions = Title::from(Line::from(vec![
+            "Check docs".into(),
+            "<d>".blue(),
+            " Toggle select ".into(),
+            "<a>".blue(),
+            " Toggle select all ".into(),
+            "<Enter>".blue(),
+        ]));
         Block::bordered()
             .title("Crates")
-            .title_alignment(Alignment::Left)
-            .title_bottom(Line::from("Check docs").right_aligned())
-            .title_bottom(Line::from("<d>".blue()).right_aligned())
-            .title_bottom(Line::from(" Toggle select ").right_aligned())
-            .title_bottom(Line::from("<a>".blue()).right_aligned())
-            .title_bottom(Line::from(" Toggle select all ").right_aligned())
-            .title_bottom(Line::from("<Enter>".blue()).right_aligned())
+            .title(
+                instructions
+                    .alignment(Alignment::Right)
+                    .position(Position::Bottom),
+            )
             .border_set(border::ROUNDED)
-            .render(layout[0], buf);
+            .render(area, buf);
 
-        self.render_crates_list(layout[0], buf);
+        let inner_main_area = area.inner(&Margin {
+            horizontal: 10,
+            vertical: 3,
+        });
 
-        Block::bordered()
-            .title("dependencies list")
-            .border_set(border::ROUNDED)
-            .render(layout[1], buf);
-
-        self.render_dependencies_list(layout[1], buf);
+        self.render_crates_list(inner_main_area, buf);
     }
 
     fn render_footer(&self, area: Rect, buf: &mut Buffer) {
@@ -209,6 +270,32 @@ impl AppView {
                 );
             }
             CategoriesTabs::Clis => {
+                self.crates_list.crates_widget_list = CratesListWidget::new(&self.cli_crates);
+
+                StatefulWidget::render(
+                    self.crates_list.crates_widget_list.clone(),
+                    area,
+                    buf,
+                    &mut self.crates_list.state,
+                );
+            }
+            CategoriesTabs::Loggin
+            | CategoriesTabs::FFI
+            | CategoriesTabs::Math
+            | CategoriesTabs::Http
+            | CategoriesTabs::Databases
+            | CategoriesTabs::WebSockets
+            | CategoriesTabs::Cryptography
+            | CategoriesTabs::ErrorHandling
+            | CategoriesTabs::TerminalRendering
+            | CategoriesTabs::LanguageExtensions
+            | CategoriesTabs::Networking
+            | CategoriesTabs::Utility
+            | CategoriesTabs::System
+            | CategoriesTabs::GUI
+            | CategoriesTabs::General
+            | CategoriesTabs::GameDevelopment
+            | CategoriesTabs::Grpc => {
                 self.crates_list.crates_widget_list = CratesListWidget::new(&self.cli_crates);
 
                 StatefulWidget::render(
@@ -284,6 +371,8 @@ impl AppView {
                     &mut self.dependencies_to_add_list.dependencies_to_add,
                 );
             }
+
+            _ => unimplemented!(),
         }
     }
 
@@ -302,7 +391,9 @@ impl AppView {
                     &mut self.concurrency_crates[index_crate_selected],
                     &mut self.dependencies_to_add_list.dependencies_to_add,
                 ),
-            }
+
+                _ => unimplemented!(),
+            };
         }
     }
 }
