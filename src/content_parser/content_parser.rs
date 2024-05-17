@@ -23,7 +23,7 @@ impl ContentParser {
     pub fn get_clis_tables(&self) -> [Table; 3] {
         let selector = Selector::parse("#section-cli-tools > section > table").unwrap();
 
-        let entry_selector = Selector::parse("tbody > tr  td").unwrap();
+        let entry_selector = Selector::parse("tbody > tr  td > p").unwrap();
 
         //Each p contains the name of the crate
         let docs_selector = Selector::parse("p > a").unwrap();
@@ -36,16 +36,23 @@ impl ContentParser {
 
         cli_section.for_each(|tbl| {
             let contents = tbl.select(&entry_selector);
-            let use_case = String::new();
 
             let mut crates: Vec<Crates> = Vec::new();
 
             let crates_elements = tbl.select(&name_selector);
+            let docs = tbl.select(&docs_selector);
 
-            for ele in crates_elements {
+            for ((cont, name), description) in contents
+                .zip(tbl.select(&name_selector))
+                .zip(tbl.select(&description_selector))
+            {
                 crates.push(Crates {
-                    name: ele.inner_html(),
-                    description: "aa".into(),
+                    name: name.inner_html(),
+                    description: description
+                        .text()
+                        .last()
+                        .unwrap_or("Description not found".into())
+                        .to_string(),
                     docs: "aaa".into(),
                 })
             }
@@ -56,7 +63,7 @@ impl ContentParser {
             })
         });
 
-        println!("{:?}", entries);
+        println!("{:#?}", entries);
 
         [
             Table { entries: vec![] },
