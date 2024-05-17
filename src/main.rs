@@ -1,4 +1,3 @@
-use scraper::scraper::scrape_site;
 use tui::tui::{init, restore};
 use view::ui::AppView;
 
@@ -11,5 +10,9 @@ mod utils;
 mod view;
 
 fn main() {
-    content_parser::content_parser::ContentParser::new().get_clis_tables();
+    let mut terminal = init().unwrap();
+
+    let app_result = AppView::new().run(&mut terminal);
+
+    restore().unwrap()
 }

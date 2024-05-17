@@ -1,4 +1,4 @@
-use scraper::{html, selectable::Selectable, selector, Html, Selector};
+use scraper::{html, selectable::Selectable, selector, ElementRef, Html, Selector};
 
 use crate::{
     backend::{Categories, Crates, Table, TableEntry},
@@ -20,7 +20,7 @@ impl ContentParser {
         }
     }
 
-    pub fn get_clis_tables(&self) -> [Table; 3] {
+    pub fn get_clis_tables(&self) -> Table {
         let selector = Selector::parse("#section-cli-tools > section > table").unwrap();
 
         let entry_selector = Selector::parse("tbody > tr  td > p").unwrap();
@@ -39,23 +39,21 @@ impl ContentParser {
 
             let mut crates: Vec<Crates> = Vec::new();
 
-            let crates_elements = tbl.select(&name_selector);
-            let docs = tbl.select(&docs_selector);
+            contents.for_each(|con| {
+                let crate_name = con.select(&name_selector).next().unwrap().inner_html();
+                let docs = format!("https://docs.rs/{}/latest/{}/", crate_name, crate_name);
 
-            for ((cont, name), description) in contents
-                .zip(tbl.select(&name_selector))
-                .zip(tbl.select(&description_selector))
-            {
+                let text = con
+                    .text()
+                    .filter(|text| *text != crate_name && !text.contains("[docs]"))
+                    .collect::<String>();
+
                 crates.push(Crates {
-                    name: name.inner_html(),
-                    description: description
-                        .text()
-                        .last()
-                        .unwrap_or("Description not found".into())
-                        .to_string(),
-                    docs: "aaa".into(),
-                })
-            }
+                    name: crate_name,
+                    description: text.trim().to_string(),
+                    docs,
+                });
+            });
 
             entries.push(TableEntry {
                 use_case: "".into(),
@@ -65,10 +63,6 @@ impl ContentParser {
 
         println!("{:#?}", entries);
 
-        [
-            Table { entries: vec![] },
-            Table { entries: vec![] },
-            Table { entries: vec![] },
-        ]
+        Table { entries }
     }
 }

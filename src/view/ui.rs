@@ -10,6 +10,7 @@ use ratatui::{
 
 use crate::{
     backend::{backend::get_crates, Categories},
+    content_parser::content_parser::ContentParser,
     tui::tui::Tui,
     utils::{toggle_dependencies_all, toggle_one_dependency, toggle_status_all},
 };
@@ -73,9 +74,9 @@ impl Widget for &mut AppView {
         let main_layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Percentage(24),
-                Constraint::Percentage(51),
-                Constraint::Percentage(25),
+                Constraint::Percentage(20),
+                Constraint::Percentage(60),
+                Constraint::Percentage(20),
             ])
             .split(area);
 
@@ -101,9 +102,11 @@ impl AppView {
     }
 
     pub fn new() -> Self {
+        let content = ContentParser::new();
+
         let crates = get_crates(Categories::FFI);
 
-        let cli_crates = get_crates(Categories::Clis);
+        let cli_crates = content.get_clis_tables();
         let graphics_crates = get_crates(Categories::Graphics);
         let concurrency_crates = get_crates(Categories::Concurrency);
         let loggin = get_crates(Categories::Loggin);
