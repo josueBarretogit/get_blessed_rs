@@ -37,3 +37,7 @@ pub fn toggle_one_dependency(
         }
     }
 }
+
+pub fn trim_ending(text: &str) -> String {
+    todo!()
+}

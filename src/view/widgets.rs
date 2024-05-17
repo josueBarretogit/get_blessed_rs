@@ -1,3 +1,5 @@
+use std::default;
+
 use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
 
 use ratatui::{
@@ -174,26 +176,31 @@ impl<'a> Footer<'a> {
 
 #[derive(Default, Clone, Copy, Display, FromRepr, EnumIter)]
 pub enum CategoriesTabs {
+    #[strum(to_string = "common")]
     #[default]
-    General,
-    Clis,
-    ErrorHandling,
-    Loggin,
-    LanguageExtensions,
-    System,
+    Common,
+    #[strum(to_string = "math-scientific")]
     Math,
+
+    #[strum(to_string = "ffi")]
     FFI,
+
+    #[strum(to_string = "cryptography")]
     Cryptography,
-    Networking,
-    Http,
-    WebSockets,
-    Grpc,
-    Databases,
-    Utility,
-    TerminalRendering,
+
+    #[strum(to_string = "concurrency")]
     Concurrency,
-    GUI,
-    GameDevelopment,
+
+    #[strum(to_string = "networking")]
+    Networking,
+
+    #[strum(to_string = "databases")]
+    Databases,
+
+    #[strum(to_string = "cli-tools")]
+    Clis,
+
+    #[strum(to_string = "graphics")]
     Graphics,
 }
 

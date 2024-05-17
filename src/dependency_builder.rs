@@ -1,18 +1,23 @@
+use std::process::Command;
+
 pub mod dependency_builder;
 
+pub struct DependenciesBuilder {
+    crate_names: Vec<String>,
+}
 
-#[cfg(test)]
-mod tests {
-    use core::panic;
-
-    #[test]
-    fn should_work() {
-        assert!(true)
+impl DependenciesBuilder {
+    pub fn new(crate_names: Vec<String>) -> Self {
+        Self { crate_names }
     }
 
-    #[test]
-    fn should_panic()  {
-        panic!("this test failed");
+    pub fn add_dependencies(&self) {
+        for dependency in self.crate_names.clone() {
+            Command::new("cargo")
+                .arg("add")
+                .arg(dependency)
+                .status()
+                .expect("error adding dependencies");
+        }
     }
-
 }

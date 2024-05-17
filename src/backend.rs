@@ -1,4 +1,5 @@
 use fake::Dummy;
+use strum::{Display, EnumIter, FromRepr};
 
 pub mod backend;
 
@@ -20,24 +21,35 @@ pub struct Table {
     pub entries: Vec<TableEntry>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, FromRepr, Display, EnumIter)]
 pub enum Categories {
-    ErrorHandling,
-    Loggin,
-    LanguageExtensions,
-    System,
+    #[strum(to_string = "math-scientific")]
     Math,
+
+    #[strum(to_string = "ffi")]
     FFI,
+
+    #[strum(to_string = "cryptography")]
     Cryptography,
-    Networking,
-    Http,
-    WebSockets,
-    Grpc,
-    Databases,
-    Clis,
-    Utility,
-    TerminalRendering,
+}
+
+#[derive(Debug, Clone, FromRepr, Display, EnumIter)]
+pub enum CategoriesWithSubCategories {
+    #[strum(to_string = "common")]
+    Common,
+
+    #[strum(to_string = "concurrency")]
     Concurrency,
+
+    #[strum(to_string = "networking")]
+    Networking,
+
+    #[strum(to_string = "databases")]
+    Databases,
+
+    #[strum(to_string = "cli-tools")]
+    Clis,
+
+    #[strum(to_string = "graphics")]
     Graphics,
-    GameDevelopment,
 }

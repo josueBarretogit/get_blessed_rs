@@ -9,8 +9,9 @@ use ratatui::{
 };
 
 use crate::{
-    backend::{backend::get_crates, Categories},
+    backend::{backend::get_crates, Categories, CategoriesWithSubCategories},
     content_parser::content_parser::ContentParser,
+    dependency_builder::DependenciesBuilder,
     tui::tui::Tui,
     utils::{toggle_dependencies_all, toggle_one_dependency, toggle_status_all},
 };
@@ -22,21 +23,19 @@ pub struct AppView {
     pub dependencies_to_add_list: DependenciesList,
     pub crates_list: CratesList,
     pub category_tabs: CategoriesTabs,
-    pub cli_crates: Vec<CrateItemList>,
-    pub graphics_crates: Vec<CrateItemList>,
-    pub concurrency_crates: Vec<CrateItemList>,
+
     pub exit: bool,
     categories_list_state: ListState,
 
-    loggin: Vec<CrateItemList>,
-    language: Vec<CrateItemList>,
-    system: Vec<CrateItemList>,
-    math: Vec<CrateItemList>,
-    websockets: Vec<CrateItemList>,
-    databasae: Vec<CrateItemList>,
-    terminalre: Vec<CrateItemList>,
-    grpc: Vec<CrateItemList>,
-    utility: Vec<CrateItemList>,
+    math_crates: Vec<CrateItemList>,
+    ffi_crates: Vec<CrateItemList>,
+    cryptography_crates: Vec<CrateItemList>,
+    common_crates: Vec<CrateItemList>,
+    concurrency_crates: Vec<CrateItemList>,
+    networking_crates: Vec<CrateItemList>,
+    database_crates: Vec<CrateItemList>,
+    clis_crates: Vec<CrateItemList>,
+    graphics_crates: Vec<CrateItemList>,
 }
 
 #[derive(Default)]
@@ -102,45 +101,43 @@ impl AppView {
     }
 
     pub fn new() -> Self {
-        let content = ContentParser::new();
-
-        let crates = get_crates(Categories::FFI);
-
-        let cli_crates = content.get_clis_tables();
-        let graphics_crates = get_crates(Categories::Graphics);
-        let concurrency_crates = get_crates(Categories::Concurrency);
-        let loggin = get_crates(Categories::Loggin);
-        let language = get_crates(Categories::LanguageExtensions);
-        let system = get_crates(Categories::System);
-        let math = get_crates(Categories::Math);
-        let websockets = get_crates(Categories::WebSockets);
-        let databasae = get_crates(Categories::Databases);
-        let terminalre = get_crates(Categories::TerminalRendering);
-        let grpc = get_crates(Categories::Grpc);
-        let utility = get_crates(Categories::Utility);
-        let gamedevelopment_crates = get_crates(Categories::GameDevelopment);
-        let networking_crates = get_crates(Categories::Networking);
+        let page_contents = ContentParser::new();
 
         let mut list_state = ListState::default();
 
         list_state.select(Some(0));
 
+        let math_crates = page_contents.get_crates(Categories::Math);
+        let ffi_crates = page_contents.get_crates(Categories::FFI);
+        let cryptography_crates = page_contents.get_crates(Categories::Cryptography);
+
+        let common_crates = page_contents.get_crates_with_sub(CategoriesWithSubCategories::Common);
+        let concurrency_crates =
+            page_contents.get_crates_with_sub(CategoriesWithSubCategories::Concurrency);
+        let networking_crates =
+            page_contents.get_crates_with_sub(CategoriesWithSubCategories::Networking);
+        let database_crates =
+            page_contents.get_crates_with_sub(CategoriesWithSubCategories::Databases);
+        let clis_crates = page_contents.get_crates_with_sub(CategoriesWithSubCategories::Clis);
+        let graphics_crates =
+            page_contents.get_crates_with_sub(CategoriesWithSubCategories::Graphics);
+
         Self {
             dependencies_to_add_list: DependenciesList::default(),
             crates_list: CratesList::default(),
             category_tabs: CategoriesTabs::default(),
-            cli_crates: cli_crates.into(),
-            graphics_crates: graphics_crates.into(),
+
+            math_crates: math_crates.into(),
+            ffi_crates: ffi_crates.into(),
+
+            cryptography_crates: cryptography_crates.into(),
+
+            common_crates: common_crates.into(),
             concurrency_crates: concurrency_crates.into(),
-            loggin: loggin.into(),
-            language: language.into(),
-            system: system.into(),
-            math: math.into(),
-            websockets: websockets.into(),
-            utility: utility.into(),
-            databasae: databasae.into(),
-            terminalre: terminalre.into(),
-            grpc: grpc.into(),
+            networking_crates: networking_crates.into(),
+            database_crates: database_crates.into(),
+            clis_crates: clis_crates.into(),
+            graphics_crates: graphics_crates.into(),
 
             categories_list_state: list_state,
 
@@ -167,6 +164,7 @@ impl AppView {
             KeyCode::Up => self.scroll_up(),
             KeyCode::Enter => self.toggle_select_all_dependencies(),
             KeyCode::Char('a') => self.toggle_select_dependencie(),
+            KeyCode::Char('h') => self.add_dependencies(),
             _ => {}
         }
     }
@@ -204,7 +202,7 @@ impl AppView {
         block_tabs.render(area, buf);
 
         let margin = area.inner(&Margin {
-            horizontal: 5,
+            horizontal: 1,
             vertical: 3,
         });
 
@@ -236,7 +234,7 @@ impl AppView {
             .render(area, buf);
 
         let inner_main_area = area.inner(&Margin {
-            horizontal: 10,
+            horizontal: 1,
             vertical: 3,
         });
 
@@ -280,7 +278,7 @@ impl AppView {
                 );
             }
             CategoriesTabs::Clis => {
-                self.crates_list.crates_widget_list = CratesListWidget::new(&self.cli_crates);
+                self.crates_list.crates_widget_list = CratesListWidget::new(&self.clis_crates);
 
                 StatefulWidget::render(
                     self.crates_list.crates_widget_list.clone(),
@@ -289,24 +287,61 @@ impl AppView {
                     &mut self.crates_list.state,
                 );
             }
-            CategoriesTabs::Loggin
-            | CategoriesTabs::FFI
-            | CategoriesTabs::Math
-            | CategoriesTabs::Http
-            | CategoriesTabs::Databases
-            | CategoriesTabs::WebSockets
-            | CategoriesTabs::Cryptography
-            | CategoriesTabs::ErrorHandling
-            | CategoriesTabs::TerminalRendering
-            | CategoriesTabs::LanguageExtensions
-            | CategoriesTabs::Networking
-            | CategoriesTabs::Utility
-            | CategoriesTabs::System
-            | CategoriesTabs::GUI
-            | CategoriesTabs::General
-            | CategoriesTabs::GameDevelopment
-            | CategoriesTabs::Grpc => {
-                self.crates_list.crates_widget_list = CratesListWidget::new(&self.cli_crates);
+            CategoriesTabs::FFI => {
+                self.crates_list.crates_widget_list = CratesListWidget::new(&self.ffi_crates);
+
+                StatefulWidget::render(
+                    self.crates_list.crates_widget_list.clone(),
+                    area,
+                    buf,
+                    &mut self.crates_list.state,
+                );
+            }
+            CategoriesTabs::Math => {
+                self.crates_list.crates_widget_list = CratesListWidget::new(&self.math_crates);
+
+                StatefulWidget::render(
+                    self.crates_list.crates_widget_list.clone(),
+                    area,
+                    buf,
+                    &mut self.crates_list.state,
+                );
+            }
+
+            CategoriesTabs::Common => {
+                self.crates_list.crates_widget_list = CratesListWidget::new(&self.common_crates);
+
+                StatefulWidget::render(
+                    self.crates_list.crates_widget_list.clone(),
+                    area,
+                    buf,
+                    &mut self.crates_list.state,
+                );
+            }
+            CategoriesTabs::Databases => {
+                self.crates_list.crates_widget_list = CratesListWidget::new(&self.database_crates);
+
+                StatefulWidget::render(
+                    self.crates_list.crates_widget_list.clone(),
+                    area,
+                    buf,
+                    &mut self.crates_list.state,
+                );
+            }
+            CategoriesTabs::Networking => {
+                self.crates_list.crates_widget_list =
+                    CratesListWidget::new(&self.networking_crates);
+
+                StatefulWidget::render(
+                    self.crates_list.crates_widget_list.clone(),
+                    area,
+                    buf,
+                    &mut self.crates_list.state,
+                );
+            }
+            CategoriesTabs::Cryptography => {
+                self.crates_list.crates_widget_list =
+                    CratesListWidget::new(&self.cryptography_crates);
 
                 StatefulWidget::render(
                     self.crates_list.crates_widget_list.clone(),
@@ -361,9 +396,9 @@ impl AppView {
     fn toggle_select_all_dependencies(&mut self) {
         match self.category_tabs {
             CategoriesTabs::Clis => {
-                toggle_status_all(&mut self.cli_crates);
+                toggle_status_all(&mut self.clis_crates);
                 toggle_dependencies_all(
-                    &self.cli_crates,
+                    &self.clis_crates,
                     &mut self.dependencies_to_add_list.dependencies_to_add,
                 );
             }
@@ -390,7 +425,7 @@ impl AppView {
         if let Some(index_crate_selected) = self.crates_list.state.selected() {
             match self.category_tabs {
                 CategoriesTabs::Clis => toggle_one_dependency(
-                    &mut self.cli_crates[index_crate_selected],
+                    &mut self.clis_crates[index_crate_selected],
                     &mut self.dependencies_to_add_list.dependencies_to_add,
                 ),
                 CategoriesTabs::Graphics => toggle_one_dependency(
@@ -405,5 +440,12 @@ impl AppView {
                 _ => unimplemented!(),
             };
         }
+    }
+
+    fn add_dependencies(&self) {
+        let dependency_builder =
+            DependenciesBuilder::new(self.dependencies_to_add_list.dependencies_to_add.clone());
+
+        dependency_builder.add_dependencies()
     }
 }
