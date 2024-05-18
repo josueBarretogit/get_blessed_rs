@@ -68,9 +68,9 @@ impl Widget for &mut AppView {
         let main_layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Percentage(20),
+                Constraint::Percentage(15),
                 Constraint::Percentage(60),
-                Constraint::Percentage(20),
+                Constraint::Percentage(25),
             ])
             .split(area);
 
@@ -172,6 +172,7 @@ impl AppView {
     }
 
     pub fn next_tab(&mut self) {
+        self.crates_list.state.select(Some(0));
         self.category_tabs = self.category_tabs.next();
 
         self.categories_list_state
@@ -179,6 +180,7 @@ impl AppView {
     }
 
     pub fn previos_tab(&mut self) {
+        self.crates_list.state.select(Some(0));
         self.category_tabs = self.category_tabs.previous();
 
         self.categories_list_state
@@ -355,32 +357,42 @@ impl AppView {
     }
 
     fn scroll_down(&mut self) {
-        let next_index = match self.crates_list.state.selected() {
+        let next = match self.crates_list.state.selected() {
             Some(index) => {
-                if index == 0 {
-                    1
-                } else if index >= self.crates_list.crates_widget_list.crates.len() {
+                if index
+                    == self
+                        .crates_list
+                        .crates_widget_list
+                        .crates
+                        .iter()
+                        .len()
+                        .saturating_sub(1)
+                {
                     0
                 } else {
-                    index + 1
+                    index.saturating_add(1)
                 }
             }
             None => self.crates_list.state.selected().unwrap_or(0),
         };
 
-        self.crates_list.state.select(Some(next_index));
+        self.crates_list.state.select(Some(next));
     }
 
     fn scroll_up(&mut self) {
         let next_index = match self.crates_list.state.selected() {
             Some(index) => {
                 if index == 0 {
-                    self.crates_list.crates_widget_list.crates.len()
+                    self.crates_list
+                        .crates_widget_list
+                        .crates
+                        .len()
+                        .saturating_sub(1)
                 } else {
-                    index - 1
+                    index.saturating_sub(1)
                 }
             }
-            None => self.crates_list.state.selected().unwrap_or(0),
+            None => 1,
         };
         self.crates_list.state.select(Some(next_index));
     }

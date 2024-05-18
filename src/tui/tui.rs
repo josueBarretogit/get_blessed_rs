@@ -1,7 +1,10 @@
 use std::io;
 
+use color_eyre::config::HookBuilder;
 use crossterm::{
-    event::KeyEvent, execute, terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen}
+    event::KeyEvent,
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
 
@@ -20,6 +23,21 @@ pub fn restore() -> io::Result<()> {
     Ok(())
 }
 
+pub fn init_error_hooks() -> color_eyre::Result<()> {
+    let (panic, error) = HookBuilder::default().into_hooks();
+    let panic = panic.into_panic_hook();
+    let error = error.into_eyre_hook();
+    color_eyre::eyre::set_hook(Box::new(move |e| {
+        let _ = restore();
+        error(e)
+    }))?;
+    std::panic::set_hook(Box::new(move |info| {
+        let _ = restore();
+        panic(info);
+    }));
+    Ok(())
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum Event {
     /// Terminal tick.
@@ -27,4 +45,3 @@ pub enum Event {
     /// Key press.
     Key(KeyEvent),
 }
-

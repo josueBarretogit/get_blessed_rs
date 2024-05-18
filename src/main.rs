@@ -1,4 +1,6 @@
-use tui::tui::{init, restore};
+use std::error::Error;
+
+use tui::tui::{init, init_error_hooks, restore};
 use view::ui::AppView;
 
 mod backend;
@@ -9,10 +11,13 @@ mod tui;
 mod utils;
 mod view;
 
-fn main() {
-    let mut terminal = init().unwrap();
+fn main() -> Result<(), Box<dyn Error>> {
+    init_error_hooks()?;
 
-    let app_result = AppView::new().run(&mut terminal);
+    let mut terminal = init()?;
 
-    restore().unwrap()
+    AppView::new().run(&mut terminal)?;
+
+    restore()?;
+    Ok(())
 }
