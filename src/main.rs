@@ -1,8 +1,6 @@
 use tui::tui::{init, restore};
 use view::ui::AppView;
 
-use crate::content_parser::content_parser::ContentParser;
-
 mod backend;
 mod content_parser;
 mod dependency_builder;
@@ -12,7 +10,7 @@ mod utils;
 mod view;
 
 fn main() {
-    let table =  ContentParser::new().get_crates(backend::Categories::Cryptography);
+    let table = content_parser::content_parser::ContentParser::new().get_general_crates();
 
-    println!("{:#?}", table);
+    println!("{:#?}", table)
 }
