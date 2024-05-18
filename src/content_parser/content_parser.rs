@@ -40,22 +40,44 @@ impl ContentParser {
         let mut entries: Vec<TableEntry> = Vec::new();
 
         crates_section.for_each(|entr| {
-            let crates_in_entry = entr.select(&name_selector);
+            let crates_in_entry = entr.select(&description_selector);
             let mut crates: Vec<Crates> = Vec::new();
             crates_in_entry.for_each(|cr| {
-                let crate_name = cr.inner_html();
-                let docs = format!("https://docs.rs/{}/latest/{}/", crate_name, crate_name);
+                println!("{}", cr.html());
 
-                let description = entr
+                let text = cr
                     .text()
-                    .filter(|text| *text != crate_name && !text.contains("[docs]"))
+                    .map(|text| text.trim().to_string())
+                    .filter_map(|te| {
+                        if !te.is_empty()
+                            && !te.contains("[docs]")
+                            && !te.contains("For more algorithms, see")
+                            && !te.contains("Rust Crypto Password Hashes")
+                        {
+                            return Some(format!("{},", te));
+                        } else {
+                            return None;
+                        }
+                    })
                     .collect::<String>();
 
-                crates.push(Crates {
-                    name: crate_name,
-                    description: description.trim().to_string(),
-                    docs,
-                });
+                let data: Vec<&str> = text.splitn(2, ',').collect();
+
+                let name = data[0].to_string();
+                let description = if data[1].is_empty() {
+                    "no description".to_string()
+                } else {
+                    data[1].to_string()
+                };
+                let docs = format!("https://docs.rs/{}/latest/{}/", name, name);
+
+                if name != "." && description != ".," {
+                    crates.push(Crates {
+                        name,
+                        description,
+                        docs,
+                    });
+                }
             });
             entries.push(TableEntry {
                 use_case: "".into(),
@@ -90,24 +112,24 @@ impl ContentParser {
         let name_selector = Selector::parse("p > b > a").unwrap();
         let description_selector = Selector::parse("p").unwrap();
 
-        let cli_section = self.content.select(&selector);
+        let crate_section = self.content.select(&selector);
 
         let mut entries: Vec<TableEntry> = Vec::new();
 
-        cli_section.for_each(|tbl| {
+        crate_section.for_each(|tbl| {
             let contents = tbl.select(&entry_selector);
 
             let mut crates: Vec<Crates> = Vec::new();
 
-            contents.for_each(|con| {
-                let crate_name = match con.select(&name_selector).next() {
+            contents.for_each(|entry| {
+                let crate_name = match entry.select(&name_selector).next() {
                     Some(elemen) => elemen.inner_html(),
                     None => "there is no name wtf".into(),
                 };
 
                 let docs = format!("https://docs.rs/{}/latest/{}/", crate_name, crate_name);
 
-                let text = con
+                let text = entry
                     .text()
                     .filter(|text| *text != crate_name && !text.contains("[docs]"))
                     .collect::<String>();

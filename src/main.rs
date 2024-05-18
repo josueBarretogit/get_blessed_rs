@@ -1,6 +1,8 @@
 use tui::tui::{init, restore};
 use view::ui::AppView;
 
+use crate::content_parser::content_parser::ContentParser;
+
 mod backend;
 mod content_parser;
 mod dependency_builder;
@@ -10,9 +12,7 @@ mod utils;
 mod view;
 
 fn main() {
-    let mut terminal = init().unwrap();
+    let table =  ContentParser::new().get_crates(backend::Categories::Cryptography);
 
-    let app_result = AppView::new().run(&mut terminal);
-
-    restore().unwrap()
+    println!("{:#?}", table);
 }

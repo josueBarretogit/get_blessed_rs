@@ -235,7 +235,7 @@ impl AppView {
 
         let inner_main_area = area.inner(&Margin {
             horizontal: 1,
-            vertical: 3,
+            vertical: 1,
         });
 
         self.render_crates_list(inner_main_area, buf);
