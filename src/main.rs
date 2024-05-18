@@ -10,7 +10,9 @@ mod utils;
 mod view;
 
 fn main() {
-    let table = content_parser::content_parser::ContentParser::new().get_general_crates();
+    let mut terminal = init().unwrap();
 
-    println!("{:#?}", table)
+    let app_result = AppView::new().run(&mut terminal);
+
+    restore().unwrap()
 }

@@ -1,6 +1,8 @@
 use fake::Dummy;
 use strum::{Display, EnumIter, FromRepr};
 
+use crate::view::widgets::{CrateItemList, ItemListStatus};
+
 pub mod backend;
 
 #[derive(Default, Debug, Clone, Dummy, PartialEq, Eq, PartialOrd, Ord)]
@@ -21,6 +23,25 @@ pub struct Table {
     pub entries: Vec<TableEntry>,
 }
 
+impl Into<Vec<CrateItemList>> for crate::backend::Table {
+    fn into(self) -> Vec<CrateItemList> {
+        let mut items: Vec<CrateItemList> = vec![];
+
+        self.entries.iter().for_each(|entr| {
+            entr.crates.iter().for_each(|cr| {
+                items.push(CrateItemList::new(
+                    cr.name.to_owned(),
+                    cr.description.to_owned(),
+                    cr.docs.to_owned(),
+                    ItemListStatus::default(),
+                ))
+            })
+        });
+
+        items
+    }
+}
+
 #[derive(Debug, Clone, FromRepr, Display, EnumIter)]
 pub enum Categories {
     #[strum(to_string = "general")]
@@ -36,7 +57,7 @@ pub enum Categories {
     Cryptography,
 }
 
-#[derive(Debug, Clone, FromRepr, Display, EnumIter)]
+#[derive(Debug, Clone, FromRepr, Display, EnumIter, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CategoriesWithSubCategories {
     #[strum(to_string = "common")]
     Common,

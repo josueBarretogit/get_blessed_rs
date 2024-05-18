@@ -176,7 +176,11 @@ impl ContentParser {
 
         let name_selector = Selector::parse("p > b > a").unwrap();
 
-        let crate_section = self.content.select(&selector);
+        let mut crate_section = self.content.select(&selector);
+
+        if category == CategoriesWithSubCategories::Common {
+            crate_section.next();
+        }
 
         let mut entries: Vec<TableEntry> = Vec::new();
 
@@ -204,11 +208,13 @@ impl ContentParser {
                     text.trim().to_string()
                 };
 
-                crates.push(Crates {
-                    name: crate_name,
-                    description,
-                    docs,
-                });
+                if !crate_name.contains("name not found") {
+                    crates.push(Crates {
+                        name: crate_name,
+                        description,
+                        docs,
+                    });
+                }
             });
 
             entries.push(TableEntry {

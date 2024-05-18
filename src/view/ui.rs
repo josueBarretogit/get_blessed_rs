@@ -27,6 +27,7 @@ pub struct AppView {
     pub exit: bool,
     categories_list_state: ListState,
 
+    general_crates: Vec<CrateItemList>,
     math_crates: Vec<CrateItemList>,
     ffi_crates: Vec<CrateItemList>,
     cryptography_crates: Vec<CrateItemList>,
@@ -46,19 +47,13 @@ pub struct CratesList {
 
 #[derive(Default, Clone)]
 pub struct DependenciesList {
-    dependencies_widget: DependenciesListWidget,
     dependencies_to_add: Vec<String>,
     state: ListState,
 }
 
 impl DependenciesList {
-    pub fn new(
-        dependencies_widget: DependenciesListWidget,
-        state: ListState,
-        dependencies_to_add: Vec<String>,
-    ) -> Self {
+    pub fn new(state: ListState, dependencies_to_add: Vec<String>) -> Self {
         Self {
-            dependencies_widget,
             state,
             dependencies_to_add,
         }
@@ -106,6 +101,7 @@ impl AppView {
         let mut list_state = ListState::default();
 
         list_state.select(Some(0));
+        let general_crates = page_contents.get_general_crates();
 
         let math_crates = page_contents.get_crates(Categories::Math);
         let ffi_crates = page_contents.get_crates(Categories::FFI);
@@ -126,6 +122,8 @@ impl AppView {
             dependencies_to_add_list: DependenciesList::default(),
             crates_list: CratesList::default(),
             category_tabs: CategoriesTabs::default(),
+
+            general_crates: general_crates.into(),
 
             math_crates: math_crates.into(),
             ffi_crates: ffi_crates.into(),
@@ -241,23 +239,17 @@ impl AppView {
         self.render_crates_list(inner_main_area, buf);
     }
 
-    fn render_footer(&self, area: Rect, buf: &mut Buffer) {
-        Footer::new(
-            vec![
-                " Next ".into(),
-                "<Tab>,".blue().bold(),
-                " Previous ".into(),
-                "<Shift + Tab>,".blue().bold(),
-                " Quit ".into(),
-                "<q>".blue().bold(),
-            ],
-            "V0.2.0",
-        )
-        .render(area, buf);
-    }
-
     fn render_crates_list(&mut self, area: Rect, buf: &mut Buffer) {
         match self.category_tabs {
+            CategoriesTabs::General => {
+                self.crates_list.crates_widget_list = CratesListWidget::new(&self.general_crates);
+                StatefulWidget::render(
+                    self.crates_list.crates_widget_list.clone(),
+                    area,
+                    buf,
+                    &mut self.crates_list.state,
+                );
+            }
             CategoriesTabs::Graphics => {
                 self.crates_list.crates_widget_list = CratesListWidget::new(&self.graphics_crates);
                 StatefulWidget::render(
@@ -417,7 +409,60 @@ impl AppView {
                 );
             }
 
-            _ => unimplemented!(),
+            CategoriesTabs::FFI => {
+                toggle_status_all(&mut self.ffi_crates);
+                toggle_dependencies_all(
+                    &self.ffi_crates,
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                );
+            }
+            CategoriesTabs::Math => {
+                toggle_status_all(&mut self.math_crates);
+                toggle_dependencies_all(
+                    &self.math_crates,
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                );
+            }
+
+            CategoriesTabs::Common => {
+                toggle_status_all(&mut self.common_crates);
+                toggle_dependencies_all(
+                    &self.common_crates,
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                );
+            }
+
+            CategoriesTabs::General => {
+                toggle_status_all(&mut self.general_crates);
+                toggle_dependencies_all(
+                    &self.general_crates,
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                );
+            }
+
+            CategoriesTabs::Databases => {
+                toggle_status_all(&mut self.database_crates);
+                toggle_dependencies_all(
+                    &self.database_crates,
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                );
+            }
+
+            CategoriesTabs::Networking => {
+                toggle_status_all(&mut self.networking_crates);
+                toggle_dependencies_all(
+                    &self.networking_crates,
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                );
+            }
+
+            CategoriesTabs::Cryptography => {
+                toggle_status_all(&mut self.cryptography_crates);
+                toggle_dependencies_all(
+                    &self.cryptography_crates,
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                );
+            }
         }
     }
 
@@ -437,7 +482,40 @@ impl AppView {
                     &mut self.dependencies_to_add_list.dependencies_to_add,
                 ),
 
-                _ => unimplemented!(),
+                CategoriesTabs::Cryptography => toggle_one_dependency(
+                    &mut self.cryptography_crates[index_crate_selected],
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                ),
+
+                CategoriesTabs::Networking => toggle_one_dependency(
+                    &mut self.networking_crates[index_crate_selected],
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                ),
+
+                CategoriesTabs::Databases => toggle_one_dependency(
+                    &mut self.database_crates[index_crate_selected],
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                ),
+
+                CategoriesTabs::General => toggle_one_dependency(
+                    &mut self.general_crates[index_crate_selected],
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                ),
+
+                CategoriesTabs::Common => toggle_one_dependency(
+                    &mut self.common_crates[index_crate_selected],
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                ),
+
+                CategoriesTabs::Math => toggle_one_dependency(
+                    &mut self.math_crates[index_crate_selected],
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                ),
+
+                CategoriesTabs::FFI => toggle_one_dependency(
+                    &mut self.ffi_crates[index_crate_selected],
+                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                ),
             };
         }
     }

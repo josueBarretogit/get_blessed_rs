@@ -9,11 +9,6 @@ use ratatui::{
     widgets::{block::*, *},
 };
 
-pub struct Footer<'a> {
-    hints: Vec<Span<'a>>,
-    version: &'a str,
-}
-
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ItemListStatus {
     Selected,
@@ -75,25 +70,6 @@ impl CrateItemList {
     }
 }
 
-impl Into<Vec<CrateItemList>> for crate::backend::Table {
-    fn into(self) -> Vec<CrateItemList> {
-        let mut items: Vec<CrateItemList> = vec![];
-
-        self.entries.iter().for_each(|entr| {
-            entr.crates.iter().for_each(|cr| {
-                items.push(CrateItemList::new(
-                    cr.name.to_owned(),
-                    cr.description.to_owned(),
-                    cr.docs.to_owned(),
-                    ItemListStatus::default(),
-                ))
-            })
-        });
-
-        items
-    }
-}
-
 #[derive(Default, Clone)]
 pub struct CratesListWidget {
     pub crates: Vec<CrateItemList>,
@@ -152,55 +128,36 @@ impl CratesListWidget {
     }
 }
 
-impl<'a> Widget for Footer<'a> {
-    fn render(self, area: Rect, buf: &mut Buffer)
-    where
-        Self: Sized,
-    {
-        let text = Title::from(Line::from(self.hints));
-
-        Block::default()
-            .title(text)
-            .title(Title::from(self.version).alignment(Alignment::Right))
-            .borders(Borders::BOTTOM)
-            .border_set(border::ROUNDED)
-            .render(area, buf);
-    }
-}
-
-impl<'a> Footer<'a> {
-    pub fn new(hints: Vec<Span<'a>>, version: &'a str) -> Self {
-        Self { hints, version }
-    }
-}
-
 #[derive(Default, Clone, Copy, Display, FromRepr, EnumIter)]
 pub enum CategoriesTabs {
-    #[strum(to_string = "common")]
+    #[strum(to_string = "General")]
     #[default]
+    General,
+
+    #[strum(to_string = "Common")]
     Common,
-    #[strum(to_string = "math-scientific")]
+    #[strum(to_string = "Math-scientific")]
     Math,
 
-    #[strum(to_string = "ffi")]
+    #[strum(to_string = "Ffi")]
     FFI,
 
-    #[strum(to_string = "cryptography")]
+    #[strum(to_string = "Cryptography")]
     Cryptography,
 
-    #[strum(to_string = "concurrency")]
+    #[strum(to_string = "Concurrency")]
     Concurrency,
 
-    #[strum(to_string = "networking")]
+    #[strum(to_string = "Networking")]
     Networking,
 
-    #[strum(to_string = "databases")]
+    #[strum(to_string = "Databases")]
     Databases,
 
-    #[strum(to_string = "cli-tools")]
+    #[strum(to_string = "Cli-tools")]
     Clis,
 
-    #[strum(to_string = "graphics")]
+    #[strum(to_string = "Graphics")]
     Graphics,
 }
 
