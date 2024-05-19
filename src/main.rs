@@ -1,6 +1,9 @@
 use std::error::Error;
 
-use tui::{handler::run, tui::{init, init_error_hooks, restore}};
+use tui::{
+    handler::run,
+    tui::{init, init_error_hooks, restore},
+};
 use view::ui::AppView;
 
 mod backend;
@@ -15,7 +18,7 @@ mod view;
 async fn main() -> Result<(), Box<dyn Error>> {
     init_error_hooks()?;
     init()?;
-    run().await;
+    run().await?;
     restore()?;
     Ok(())
 }

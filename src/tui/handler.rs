@@ -1,7 +1,10 @@
 use core::time;
 use std::{error::Error, io};
 
-use crossterm::{event::KeyEvent, terminal};
+use crossterm::{
+    event::{KeyCode, KeyEvent},
+    terminal,
+};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 
@@ -10,7 +13,7 @@ use crate::view::ui::AppView;
 use super::tui::{init, init_error_hooks, restore};
 
 #[derive(Clone, Copy, Debug)]
-pub enum Event {
+pub enum Action {
     Error,
     None,
     Tick,
@@ -18,38 +21,33 @@ pub enum Event {
 }
 
 pub struct EventHandler {
-    _tx: UnboundedSender<Event>,
-    rx: UnboundedReceiver<Event>,
+    _tx: UnboundedSender<Action>,
+    rx: UnboundedReceiver<Action>,
 }
 
-
-pub fn update(app : &mut AppView, even : Event) -> Event {
+pub fn update(app: &mut AppView, even: Action) -> Action {
     match even {
-        Event::Tick => {
+        Action::Tick => {
             app.on_tick();
-            Event::Tick
-        },
+            Action::Tick
+        }
 
-        Event::Quit => {
-            app.exit();
-            Event::Quit
-        }, 
+        Action::Quit => Action::Quit,
 
-        Event::None => Event::None,
-        Event::Error => unimplemented!(), 
+        Action::None => Action::None,
+        Action::Error => unimplemented!(),
     }
 }
 
-pub fn handle_event(app : &mut AppView, tx: UnboundedSender<Event>) -> tokio::task::JoinHandle<()> {
-
+pub fn handle_event(app: &AppView, tx: UnboundedSender<Action>) -> tokio::task::JoinHandle<()> {
     let tick_rate = time::Duration::from_millis(250);
 
     tokio::spawn(async move {
         loop {
             let action = if crossterm::event::poll(tick_rate).unwrap() {
-                Event::Tick
+                Action::Tick
             } else {
-                Event::None
+                Action::None
             };
 
             if let Err(_) = tx.send(action) {
@@ -59,38 +57,59 @@ pub fn handle_event(app : &mut AppView, tx: UnboundedSender<Event>) -> tokio::ta
     })
 }
 
-
 pub async fn run() -> Result<(), Box<dyn Error>> {
-
-
     let mut terminal = Terminal::new(CrosstermBackend::new(std::io::stdout()))?;
 
-    let (action_tx, mut action_rx) = mpsc::unbounded_channel();
+    let (action_tx, mut action_rx) = mpsc::unbounded_channel::<Action>();
 
-    let mut app = AppView::new().await;
+    let mut app = AppView::new(action_tx).await;
 
-    let task = handle_event(&mut app, action_tx);
+    let task = handle_event(&app, app.action_tx.clone());
 
+    let tick_rate = std::time::Duration::from_millis(250);
+
+    let mut last_tick = std::time::Instant::now();
     loop {
         terminal.draw(|f| {
             let area = f.size();
             f.render_widget(&mut app, area);
-            app.handle_events().unwrap();
-        
         })?;
 
-        if let Some(action) = action_rx.recv().await {
-            update(&mut app, action);
+        let timeout = tick_rate
+            .checked_sub(last_tick.elapsed())
+            .unwrap_or_else(|| std::time::Duration::from_secs(0));
+
+        if crossterm::event::poll(timeout)? {
+            if let crossterm::event::Event::Key(key) = crossterm::event::read()? {
+                if !app.is_adding_deps {
+                    match key.code {
+                        KeyCode::Char('q') | KeyCode::Esc => app.exit(),
+                        KeyCode::Tab => app.next_tab(),
+                        KeyCode::BackTab => app.previos_tab(),
+                        KeyCode::Down | KeyCode::Char('j') => app.scroll_down(),
+                        KeyCode::Up | KeyCode::Char('k') => app.scroll_up(),
+                        KeyCode::Char('h') => app.add_dependencies(),
+                        KeyCode::Char('s') => app.toggle_select_dependencie(),
+                        KeyCode::Char('a') => app.toggle_select_all_dependencies(),
+                        KeyCode::Char('d') => app.check_docs(),
+                        KeyCode::Char('c') => app.check_crates_io(),
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        if last_tick.elapsed() >= tick_rate {
+            app.on_tick();
+            last_tick = std::time::Instant::now();
         }
 
         if app.exit {
             break;
         }
-    
     }
 
     task.abort();
 
     Ok(())
-
 }

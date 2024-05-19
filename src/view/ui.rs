@@ -1,6 +1,7 @@
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, ModifierKeyCode};
 use std::{default, io, usize};
 use throbber_widgets_tui::ThrobberState;
+use tokio::sync::mpsc::UnboundedSender;
 
 use ratatui::{
     prelude::*,
@@ -13,14 +14,14 @@ use crate::{
     backend::{backend::get_crates, Categories, CategoriesWithSubCategories},
     content_parser::content_parser::ContentParser,
     dependency_builder::DependenciesBuilder,
-    tui::tui::Tui,
+    tui::{handler::Action, tui::Tui},
     utils::{centered_rect, toggle_dependencies_all, toggle_one_dependency, toggle_status_all},
 };
 
 use super::widgets::{DependenciesListWidget, *};
 
-#[derive(Default)]
 pub struct AppView {
+    pub action_tx: UnboundedSender<Action>,
     pub dependencies_to_add_list: DependenciesList,
     pub crates_list: CratesList,
     pub category_tabs: CategoriesTabs,
@@ -112,7 +113,7 @@ impl AppView {
         frame.render_widget(self, frame.size());
     }
 
-     pub async  fn new() -> Self {
+    pub async fn new(action_tx: UnboundedSender<Action>) -> Self {
         let page_contents = ContentParser::new().await;
 
         let mut list_state = ListState::default();
@@ -136,6 +137,7 @@ impl AppView {
             page_contents.get_crates_with_sub(CategoriesWithSubCategories::Graphics);
 
         Self {
+            action_tx,
             dependencies_to_add_list: DependenciesList::default(),
             crates_list: CratesList::default(),
             category_tabs: CategoriesTabs::default(),
@@ -179,7 +181,6 @@ impl AppView {
             KeyCode::BackTab => self.previos_tab(),
             KeyCode::Down | KeyCode::Char('j') => self.scroll_down(),
             KeyCode::Up | KeyCode::Char('k') => self.scroll_up(),
-            KeyCode::Enter => self.add_dependencies(),
             KeyCode::Char('s') => self.toggle_select_dependencie(),
             KeyCode::Char('a') => self.toggle_select_all_dependencies(),
             KeyCode::Char('d') => self.check_docs(),
@@ -208,7 +209,7 @@ impl AppView {
             .select(Some(self.category_tabs as usize));
     }
 
-    fn render_categories_list(&mut self, area: Rect, buf: &mut Buffer) {
+    pub fn render_categories_list(&mut self, area: Rect, buf: &mut Buffer) {
         let block_tabs = Block::default()
             .title(Title::from(Line::from(vec![
                 "go down ".into(),
@@ -235,7 +236,7 @@ impl AppView {
         );
     }
 
-    fn render_main_section(&mut self, area: Rect, buf: &mut Buffer) {
+    pub fn render_main_section(&mut self, area: Rect, buf: &mut Buffer) {
         let instructions = Title::from(Line::from(vec![
             "Check docs".into(),
             "<d>".blue(),
@@ -380,7 +381,7 @@ impl AppView {
         );
     }
 
-    fn scroll_down(&mut self) {
+    pub fn scroll_down(&mut self) {
         let next = match self.crates_list.state.selected() {
             Some(index) => {
                 if index
@@ -403,7 +404,7 @@ impl AppView {
         self.crates_list.state.select(Some(next));
     }
 
-    fn scroll_up(&mut self) {
+    pub fn scroll_up(&mut self) {
         let next_index = match self.crates_list.state.selected() {
             Some(index) => {
                 if index == 0 {
@@ -421,7 +422,7 @@ impl AppView {
         self.crates_list.state.select(Some(next_index));
     }
 
-    fn toggle_select_all_dependencies(&mut self) {
+    pub fn toggle_select_all_dependencies(&mut self) {
         match self.category_tabs {
             CategoriesTabs::Clis => {
                 toggle_status_all(&mut self.clis_crates);
@@ -502,7 +503,7 @@ impl AppView {
         }
     }
 
-    fn toggle_select_dependencie(&mut self) {
+    pub fn toggle_select_dependencie(&mut self) {
         if let Some(index_crate_selected) = self.crates_list.state.selected() {
             match self.category_tabs {
                 CategoriesTabs::Clis => toggle_one_dependency(
@@ -562,23 +563,16 @@ impl AppView {
 
     pub fn add_dependencies(&mut self) {
         self.show_popup();
-        let dependency_builder =
-            DependenciesBuilder::new(self.dependencies_to_add_list.dependencies_to_add.clone());
-
-        match dependency_builder.add_dependencies() {
-            Ok(_) => self.exit(),
-            Err(e) => {}
-        }
     }
 
-    fn check_docs(&self) {
+    pub fn check_docs(&self) {
         if let Some(index_selected) = self.crates_list.state.selected() {
             let url = &self.crates_list.crates_widget_list.crates[index_selected].docs;
             open::that(url).ok();
         }
     }
 
-    fn check_crates_io(&self) {
+    pub fn check_crates_io(&self) {
         if let Some(index_selected) = self.crates_list.state.selected() {
             let url = format!(
                 "https://crates.io/crates/{}",
@@ -589,6 +583,6 @@ impl AppView {
     }
 
     pub fn on_tick(&mut self) {
-        self.loader_state.calc_next();
+        self.loader_state.calc_next()
     }
 }
