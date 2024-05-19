@@ -10,8 +10,8 @@ pub struct ContentParser {
 }
 
 impl ContentParser {
-    pub fn new() -> Self {
-        let page_content = scrape_site().unwrap();
+    pub async  fn new() -> Self {
+        let page_content = scrape_site().await.unwrap();
 
         let html_content = Html::parse_document(&page_content);
 

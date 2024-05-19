@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use tui::tui::{init, init_error_hooks, restore};
+use tui::{handler::run, tui::{init, init_error_hooks, restore}};
 use view::ui::AppView;
 
 mod backend;
@@ -11,13 +11,11 @@ mod tui;
 mod utils;
 mod view;
 
-fn main() -> Result<(), Box<dyn Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
     init_error_hooks()?;
-
-    let mut terminal = init()?;
-
-    AppView::new().run(&mut terminal)?;
-
+    init()?;
+    run().await;
     restore()?;
     Ok(())
 }

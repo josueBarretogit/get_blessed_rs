@@ -112,8 +112,8 @@ impl AppView {
         frame.render_widget(self, frame.size());
     }
 
-    pub fn new() -> Self {
-        let page_contents = ContentParser::new();
+     pub async  fn new() -> Self {
+        let page_contents = ContentParser::new().await;
 
         let mut list_state = ListState::default();
 
@@ -162,7 +162,7 @@ impl AppView {
         }
     }
 
-    fn handle_events(&mut self) -> io::Result<()> {
+    pub fn handle_events(&mut self) -> io::Result<()> {
         match event::read()? {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                 self.handle_key_event(key_event)
@@ -188,7 +188,7 @@ impl AppView {
         }
     }
 
-    fn exit(&mut self) {
+    pub fn exit(&mut self) {
         self.exit = true;
     }
 
@@ -556,11 +556,11 @@ impl AppView {
         }
     }
 
-    fn show_popup(&mut self) {
+    pub fn show_popup(&mut self) {
         self.is_adding_deps = true;
     }
 
-    fn add_dependencies(&mut self) {
+    pub fn add_dependencies(&mut self) {
         self.show_popup();
         let dependency_builder =
             DependenciesBuilder::new(self.dependencies_to_add_list.dependencies_to_add.clone());
@@ -588,7 +588,7 @@ impl AppView {
         }
     }
 
-    fn on_tick(&mut self) {
+    pub fn on_tick(&mut self) {
         self.loader_state.calc_next();
     }
 }

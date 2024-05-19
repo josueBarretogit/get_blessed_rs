@@ -11,10 +11,10 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 pub type Tui = Terminal<CrosstermBackend<io::Stdout>>;
 
 /// Initialize the terminal
-pub fn init() -> io::Result<Tui> {
+pub fn init() -> io::Result<()> {
     execute!(io::stdout(), EnterAlternateScreen)?;
     enable_raw_mode()?;
-    Terminal::new(CrosstermBackend::new(io::stdout()))
+    Ok(())
 }
 
 pub fn restore() -> io::Result<()> {
@@ -22,6 +22,7 @@ pub fn restore() -> io::Result<()> {
     disable_raw_mode()?;
     Ok(())
 }
+
 
 pub fn init_error_hooks() -> color_eyre::Result<()> {
     let (panic, error) = HookBuilder::default().into_hooks();
