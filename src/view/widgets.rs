@@ -8,12 +8,38 @@ use ratatui::{
     symbols::border,
     widgets::{block::*, *},
 };
+use throbber_widgets_tui::{Throbber, ThrobberState};
 
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ItemListStatus {
     Selected,
     #[default]
     Unselected,
+}
+
+#[derive(Debug, Default)]
+pub struct Popup {
+    error_message: String,
+}
+
+impl StatefulWidget for Popup {
+    type State = ThrobberState;
+
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+        Block::bordered().title("").render(area, buf);
+
+        let inner_area = area.inner(&Margin {
+            vertical: 1,
+            horizontal: 1,
+        });
+
+        let loader = Throbber::default()
+            .label("Adding dependencies...")
+            .throbber_set(throbber_widgets_tui::BRAILLE_SIX)
+            .use_type(throbber_widgets_tui::WhichUse::Spin);
+
+        StatefulWidget::render(loader, inner_area, buf, state)
+    }
 }
 
 #[derive(Default, Clone)]
@@ -49,7 +75,11 @@ impl StatefulWidget for DependenciesListWidget {
             .block(
                 Block::bordered()
                     .padding(Padding::uniform(2))
-                    .title("Dependencies to add"),
+                    .title("Dependencies to add")
+                    .title(Title::from(vec![
+                        "Add deps".into(),
+                        "<Enter>".bold().blue(),
+                    ])),
             )
             .highlight_style(Style::default().blue())
             .highlight_symbol("* ")

@@ -1,5 +1,6 @@
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
-use std::{io, usize};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, ModifierKeyCode};
+use std::{default, io, usize};
+use throbber_widgets_tui::ThrobberState;
 
 use ratatui::{
     prelude::*,
@@ -13,7 +14,7 @@ use crate::{
     content_parser::content_parser::ContentParser,
     dependency_builder::DependenciesBuilder,
     tui::tui::Tui,
-    utils::{toggle_dependencies_all, toggle_one_dependency, toggle_status_all},
+    utils::{centered_rect, toggle_dependencies_all, toggle_one_dependency, toggle_status_all},
 };
 
 use super::widgets::{DependenciesListWidget, *};
@@ -25,6 +26,7 @@ pub struct AppView {
     pub category_tabs: CategoriesTabs,
 
     pub is_adding_deps: bool,
+    loader_state: throbber_widgets_tui::ThrobberState,
 
     pub exit: bool,
     categories_list_state: ListState,
@@ -42,6 +44,12 @@ pub struct AppView {
 }
 
 #[derive(Default)]
+pub enum AppModes {
+    #[default]
+    AddingDeps,
+}
+
+#[derive(Default)]
 pub struct CratesList {
     crates_widget_list: CratesListWidget,
     state: ListState,
@@ -54,7 +62,7 @@ pub struct DependenciesList {
 }
 
 impl DependenciesList {
-    pub fn new(state: ListState, dependencies_to_add: Vec<String>) -> Self {
+    pub const fn new(state: ListState, dependencies_to_add: Vec<String>) -> Self {
         Self {
             state,
             dependencies_to_add,
@@ -81,6 +89,13 @@ impl Widget for &mut AppView {
         self.render_main_section(main_layout[1], buf);
 
         self.render_dependencies_list(main_layout[2], buf);
+
+        if self.is_adding_deps {
+            let popup = Popup::default();
+            let center = centered_rect(60, 20, area);
+            Clear::default().render(center, buf);
+            StatefulWidget::render(popup, center, buf, &mut self.loader_state)
+        }
     }
 }
 
@@ -125,6 +140,7 @@ impl AppView {
             crates_list: CratesList::default(),
             category_tabs: CategoriesTabs::default(),
             is_adding_deps: false,
+            loader_state: ThrobberState::default(),
 
             general_crates: general_crates.into(),
 
@@ -223,10 +239,12 @@ impl AppView {
         let instructions = Title::from(Line::from(vec![
             "Check docs".into(),
             "<d>".blue(),
+            "Check crates.io".into(),
+            "<c>".blue(),
             " Toggle select ".into(),
-            "<a>".blue(),
+            "<s>".blue(),
             " Toggle select all ".into(),
-            "<Enter>".blue(),
+            "<a>".blue(),
         ]));
 
         Block::bordered()
@@ -538,12 +556,17 @@ impl AppView {
         }
     }
 
-    fn add_dependencies(&self) {
+    fn show_popup(&mut self) {
+        self.is_adding_deps = true;
+    }
+
+    fn add_dependencies(&mut self) {
+        self.show_popup();
         let dependency_builder =
             DependenciesBuilder::new(self.dependencies_to_add_list.dependencies_to_add.clone());
 
         match dependency_builder.add_dependencies() {
-            Ok(_) => {}
+            Ok(_) => self.exit(),
             Err(e) => {}
         }
     }
@@ -563,5 +586,9 @@ impl AppView {
             );
             open::that(url).ok();
         }
+    }
+
+    fn on_tick(&mut self) {
+        self.loader_state.calc_next();
     }
 }
