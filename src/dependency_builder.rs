@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::{io, process::Command};
 
 pub mod dependency_builder;
 
@@ -11,13 +11,14 @@ impl DependenciesBuilder {
         Self { crate_names }
     }
 
-    pub fn add_dependencies(&self) {
+    pub fn add_dependencies(&self) -> io::Result<()> {
         for dependency in self.crate_names.clone() {
             Command::new("cargo")
                 .arg("add")
                 .arg(dependency)
-                .status()
-                .expect("error adding dependencies");
+                .arg("-q")
+                .output()?;
         }
+        Ok(())
     }
 }

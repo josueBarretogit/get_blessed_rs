@@ -15,4 +15,4 @@ strum = "0.26.2"
 strum_macros = "0.26"
 fake = { version = "2.9.2", features = ["derive"] }
 scraper = "0.19.0"
-html5ever = "0.27.0"
+open = "5.1.3"

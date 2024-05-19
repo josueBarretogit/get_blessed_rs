@@ -24,6 +24,8 @@ pub struct AppView {
     pub crates_list: CratesList,
     pub category_tabs: CategoriesTabs,
 
+    pub is_adding_deps: bool,
+
     pub exit: bool,
     categories_list_state: ListState,
 
@@ -122,6 +124,7 @@ impl AppView {
             dependencies_to_add_list: DependenciesList::default(),
             crates_list: CratesList::default(),
             category_tabs: CategoriesTabs::default(),
+            is_adding_deps: false,
 
             general_crates: general_crates.into(),
 
@@ -155,14 +158,16 @@ impl AppView {
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Char('q') => self.exit(),
+            KeyCode::Char('q') | KeyCode::Esc => self.exit(),
             KeyCode::Tab => self.next_tab(),
             KeyCode::BackTab => self.previos_tab(),
-            KeyCode::Down => self.scroll_down(),
-            KeyCode::Up => self.scroll_up(),
-            KeyCode::Enter => self.toggle_select_all_dependencies(),
-            KeyCode::Char('a') => self.toggle_select_dependencie(),
-            KeyCode::Char('h') => self.add_dependencies(),
+            KeyCode::Down | KeyCode::Char('j') => self.scroll_down(),
+            KeyCode::Up | KeyCode::Char('k') => self.scroll_up(),
+            KeyCode::Enter => self.add_dependencies(),
+            KeyCode::Char('s') => self.toggle_select_dependencie(),
+            KeyCode::Char('a') => self.toggle_select_all_dependencies(),
+            KeyCode::Char('d') => self.check_docs(),
+            KeyCode::Char('c') => self.check_crates_io(),
             _ => {}
         }
     }
@@ -190,9 +195,9 @@ impl AppView {
     fn render_categories_list(&mut self, area: Rect, buf: &mut Buffer) {
         let block_tabs = Block::default()
             .title(Title::from(Line::from(vec![
-                "Next ".into(),
+                "go down ".into(),
                 "<Tab> ".blue(),
-                "Previous ".into(),
+                "go up ".into(),
                 "<Shift + Tab>".blue(),
             ])))
             .title_position(Position::Bottom)
@@ -223,8 +228,9 @@ impl AppView {
             " Toggle select all ".into(),
             "<Enter>".blue(),
         ]));
+
         Block::bordered()
-            .title("Crates")
+            .title("Crate name, description")
             .title(
                 instructions
                     .alignment(Alignment::Right)
@@ -233,12 +239,12 @@ impl AppView {
             .border_set(border::ROUNDED)
             .render(area, buf);
 
-        let inner_main_area = area.inner(&Margin {
-            horizontal: 1,
+        let inner_area_for_list = area.inner(&Margin {
             vertical: 1,
+            horizontal: 1,
         });
 
-        self.render_crates_list(inner_main_area, buf);
+        self.render_crates_list(inner_area_for_list, buf);
     }
 
     fn render_crates_list(&mut self, area: Rect, buf: &mut Buffer) {
@@ -536,6 +542,26 @@ impl AppView {
         let dependency_builder =
             DependenciesBuilder::new(self.dependencies_to_add_list.dependencies_to_add.clone());
 
-        dependency_builder.add_dependencies()
+        match dependency_builder.add_dependencies() {
+            Ok(_) => {}
+            Err(e) => {}
+        }
+    }
+
+    fn check_docs(&self) {
+        if let Some(index_selected) = self.crates_list.state.selected() {
+            let url = &self.crates_list.crates_widget_list.crates[index_selected].docs;
+            open::that(url).ok();
+        }
+    }
+
+    fn check_crates_io(&self) {
+        if let Some(index_selected) = self.crates_list.state.selected() {
+            let url = format!(
+                "https://crates.io/crates/{}",
+                self.crates_list.crates_widget_list.crates[index_selected].name
+            );
+            open::that(url).ok();
+        }
     }
 }

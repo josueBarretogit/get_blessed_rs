@@ -4,7 +4,7 @@ use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
 
 use ratatui::{
     prelude::*,
-    style::Style,
+    style::{palette::tailwind, Style},
     symbols::border,
     widgets::{block::*, *},
 };
@@ -93,28 +93,36 @@ impl From<Vec<crate::backend::Crates>> for CratesListWidget {
     }
 }
 
+impl Into<ListItem<'_>> for CrateItemList {
+    fn into(self) -> ListItem<'static> {
+        let (is_selected, bg_color) = match self.status {
+            ItemListStatus::Selected => ("✓", tailwind::BLUE.c300),
+            ItemListStatus::Unselected => ("☐", Color::default()),
+        };
+
+        let line = Line::from(vec![
+            self.name.bold().blue(),
+            " ".into(),
+            self.description.into(),
+            " ".into(),
+            is_selected.into(),
+        ]);
+
+        ListItem::new(line).style(Style::default().bg(bg_color))
+    }
+}
+
 impl StatefulWidget for CratesListWidget {
     type State = ListState;
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let list = List::new(
-            self.crates
-                .iter()
-                .map(|crate_item| {
-                    let is_selected = match crate_item.status {
-                        ItemListStatus::Selected => "✓",
-                        ItemListStatus::Unselected => "☐",
-                    };
-                    format!(
-                        "{}, {}, {}",
-                        crate_item.name, crate_item.description, is_selected
-                    )
-                })
-                .collect::<Vec<String>>(),
-        )
-        .block(Block::default().padding(Padding::uniform(2)))
-        .highlight_style(Style::default().blue())
-        .highlight_symbol(">> ")
-        .direction(ListDirection::TopToBottom);
+        let block = Block::default().padding(Padding::uniform(1));
+
+        let list = List::new(self.crates)
+            .block(block)
+            .highlight_style(Style::default())
+            .highlight_symbol(">> ")
+            .highlight_spacing(HighlightSpacing::Always)
+            .direction(ListDirection::TopToBottom);
 
         StatefulWidget::render(list, area, buf, state);
     }
