@@ -58,8 +58,8 @@ pub struct CratesList {
 
 #[derive(Default, Clone)]
 pub struct DependenciesList {
-    dependencies_to_add: Vec<String>,
-    state: ListState,
+    pub dependencies_to_add: Vec<String>,
+    pub state: ListState,
 }
 
 impl DependenciesList {

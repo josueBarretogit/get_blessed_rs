@@ -4,7 +4,6 @@ use tui::{
     handler::run,
     tui::{init, init_error_hooks, restore},
 };
-use view::ui::AppView;
 
 mod backend;
 mod content_parser;

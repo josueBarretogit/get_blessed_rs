@@ -2,13 +2,13 @@ use core::time;
 use std::{error::Error, io};
 
 use crossterm::{
-    event::{KeyCode, KeyEvent},
+    event::{KeyCode, KeyEvent, KeyEventKind},
     terminal,
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 
-use crate::view::ui::AppView;
+use crate::{dependency_builder::DependenciesBuilder, view::ui::AppView};
 
 use super::tui::{init, init_error_hooks, restore};
 
@@ -81,20 +81,8 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
 
         if crossterm::event::poll(timeout)? {
             if let crossterm::event::Event::Key(key) = crossterm::event::read()? {
-                if !app.is_adding_deps {
-                    match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc => app.exit(),
-                        KeyCode::Tab => app.next_tab(),
-                        KeyCode::BackTab => app.previos_tab(),
-                        KeyCode::Down | KeyCode::Char('j') => app.scroll_down(),
-                        KeyCode::Up | KeyCode::Char('k') => app.scroll_up(),
-                        KeyCode::Char('h') => app.add_dependencies(),
-                        KeyCode::Char('s') => app.toggle_select_dependencie(),
-                        KeyCode::Char('a') => app.toggle_select_all_dependencies(),
-                        KeyCode::Char('d') => app.check_docs(),
-                        KeyCode::Char('c') => app.check_crates_io(),
-                        _ => {}
-                    }
+                if key.kind == KeyEventKind::Press {
+                    handle_key_events(&mut app, key.code);
                 }
             }
         }
@@ -112,4 +100,32 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
     task.abort();
 
     Ok(())
+}
+
+pub fn handle_key_events(app: &mut AppView, code: KeyCode) {
+    match code {
+        KeyCode::Char('q') | KeyCode::Esc => app.exit(),
+        KeyCode::Tab => app.next_tab(),
+        KeyCode::BackTab => app.previos_tab(),
+        KeyCode::Down | KeyCode::Char('j') => app.scroll_down(),
+        KeyCode::Up | KeyCode::Char('k') => app.scroll_up(),
+        KeyCode::Enter => {
+            app.add_dependencies();
+            let dependendency_builder =
+                DependenciesBuilder::new(app.dependencies_to_add_list.dependencies_to_add.clone());
+            tokio::spawn(async move {
+                match dependendency_builder.add_dependencies() {
+                    Ok(_) => {
+                        println!("dependencies added succesfully");
+                    }
+                    Err(_) => todo!(),
+                }
+            });
+        }
+        KeyCode::Char('s') => app.toggle_select_dependencie(),
+        KeyCode::Char('a') => app.toggle_select_all_dependencies(),
+        KeyCode::Char('d') => app.check_docs(),
+        KeyCode::Char('c') => app.check_crates_io(),
+        _ => {}
+    }
 }
