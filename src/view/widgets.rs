@@ -104,24 +104,6 @@ pub struct CratesListWidget {
     pub crates: Vec<CrateItemList>,
 }
 
-impl From<Vec<crate::backend::Crates>> for CratesListWidget {
-    fn from(value: Vec<crate::backend::Crates>) -> Self {
-        Self {
-            crates: value
-                .iter()
-                .map(|cra| {
-                    CrateItemList::new(
-                        cra.name.to_owned(),
-                        cra.description.to_owned(),
-                        cra.docs.to_owned(),
-                        ItemListStatus::Unselected,
-                    )
-                })
-                .collect(),
-        }
-    }
-}
-
 impl Into<ListItem<'_>> for CrateItemList {
     fn into(self) -> ListItem<'static> {
         let (is_selected, bg_color) = match self.status {
@@ -176,7 +158,7 @@ pub enum CategoriesTabs {
     #[strum(to_string = "Math-scientific")]
     Math,
 
-    #[strum(to_string = "Ffi")]
+    #[strum(to_string = "FFI")]
     FFI,
 
     #[strum(to_string = "Cryptography")]
@@ -248,11 +230,17 @@ impl<'a> Widget for FooterInstructions<'a> {
     {
         let instructions = Title::from(Line::from(self.instructions));
 
-        let block = Block::bordered().title(
-            instructions
-                .alignment(Alignment::Center)
-                .position(Position::Bottom),
-        );
+        let info = Title::from(Line::from(vec!["V0.1.0".into()]))
+            .position(Position::Top)
+            .alignment(Alignment::Right);
+
+        let block = Block::bordered()
+            .title(
+                instructions
+                    .alignment(Alignment::Center)
+                    .position(Position::Bottom),
+            )
+            .title(info);
 
         block.render(area, buf);
     }

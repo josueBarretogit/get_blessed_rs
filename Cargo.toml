@@ -1,11 +1,19 @@
 [package]
-name = "get_blessed"
+name = "get-blessed"
 version = "0.1.0"
 edition = "2021"
+authors = ["Josue <josuebarretogit@gmail.com>"]
+readme = "README.md"
+homepage = "https://github.com/josueBarretogit/get_blessed_rs"
+repository = "https://github.com/josueBarretogit/get_blessed_rs"
+description = "Terminal tool to get you the best crates for your rust projects, curated by blessed.rs"
+keywords = ["cli", "command-line", "developer-tools", "dependencies"]
+categories = ["utilities", "development-tools" , "command-line"]
+license = "MIT"
 
 [dependencies]
 reqwest = "0.12.4"
-ratatui = { version = "0.26.2", features = ["all-widgets"] }
+ratatui = { version = "0.26.3", features = ["all-widgets"] }
 color-eyre = "0.6.2"
 crossterm = { version = "0.27.0", features = ["event-stream"] }
 serde = { version = "1.0.200", features = ["derive"] }

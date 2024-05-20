@@ -354,13 +354,15 @@ impl AppView {
             " Next category ".into(),
             "<Tab>".blue(),
             " Previous category ".into(),
-            "<Tab>".blue(),
+            "<Shift + Tab>".blue(),
             " Toggle select ".into(),
             "<s>".blue(),
             " Toggle select all ".into(),
             "<a>".blue(),
             " Add selected dependencies ".into(),
             "<Enter>".bold().blue(),
+            " Quit ".into(),
+            " <q> <Esc> ".bold().blue(),
         ])
         .render(area, buf);
     }

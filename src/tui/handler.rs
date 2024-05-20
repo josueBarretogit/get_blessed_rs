@@ -1,11 +1,11 @@
+use core::panic;
 use std::{error::Error, time::Duration};
 
-use crossterm::event::{KeyCode,  KeyEventKind};
+use crossterm::event::{KeyCode, KeyEventKind};
 use ratatui::{backend::CrosstermBackend, Terminal};
-use tokio::sync::mpsc::{self,  UnboundedSender};
+use tokio::sync::mpsc::{self, UnboundedSender};
 
 use crate::{dependency_builder::DependenciesBuilder, view::ui::AppView};
-
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Action {
@@ -70,7 +70,7 @@ pub fn update(app: &mut AppView, action: Action) {
                     Ok(_) => {
                         tx.send(Action::ShowAddingDependenciesOperation).unwrap();
                     }
-                    Err(_) => todo!(),
+                    Err(e) => panic!("An Error ocurred, please report it on github: https://github.com/josueBarretogit/get_blessed_rs \n details: {e}"),
                 }
             });
         }
