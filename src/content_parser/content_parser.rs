@@ -1,4 +1,4 @@
-use scraper::{html, selectable::Selectable, selector, ElementRef, Html, Selector};
+use scraper::{selectable::Selectable, Html, Selector};
 
 use crate::{
     backend::{Categories, CategoriesWithSubCategories, Crates, Table, TableEntry},
@@ -10,7 +10,7 @@ pub struct ContentParser {
 }
 
 impl ContentParser {
-    pub async  fn new() -> Self {
+    pub async fn new() -> Self {
         let page_content = scrape_site().await.unwrap();
 
         let html_content = Html::parse_document(&page_content);

@@ -1,20 +1,17 @@
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, ModifierKeyCode};
-use std::{default, io, usize};
+use std::usize;
 use throbber_widgets_tui::ThrobberState;
 use tokio::sync::mpsc::UnboundedSender;
 
 use ratatui::{
     prelude::*,
-    style::Style,
     symbols::border,
     widgets::{block::*, *},
 };
 
 use crate::{
-    backend::{backend::get_crates, Categories, CategoriesWithSubCategories},
+    backend::{Categories, CategoriesWithSubCategories},
     content_parser::content_parser::ContentParser,
-    dependency_builder::DependenciesBuilder,
-    tui::{handler::Action, tui::Tui},
+    tui::handler::Action,
     utils::{centered_rect, toggle_dependencies_all, toggle_one_dependency, toggle_status_all},
 };
 
@@ -26,9 +23,10 @@ pub struct AppView {
     pub crates_list: CratesList,
     pub category_tabs: CategoriesTabs,
 
-    pub is_adding_deps: bool,
+    is_adding_deps: bool,
 
-    pub popup_widget: Popup,
+    popup_widget: Popup,
+
     loader_state: throbber_widgets_tui::ThrobberState,
 
     pub exit: bool,
@@ -73,19 +71,29 @@ impl Widget for &mut AppView {
         Self: Sized,
     {
         let main_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Percentage(90), Constraint::Percentage(10)]);
+
+        let [main_area, footer_area] = main_layout.areas(area);
+
+        let main_layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
                 Constraint::Percentage(15),
                 Constraint::Percentage(60),
                 Constraint::Percentage(25),
-            ])
-            .split(area);
+            ]);
 
-        self.render_categories_list(main_layout[0], buf);
+        let [categories_list_area, crates_list_area, dependencies_to_add_area] =
+            main_layout.areas(main_area);
 
-        self.render_main_section(main_layout[1], buf);
+        self.render_categories_list(categories_list_area, buf);
 
-        self.render_dependencies_list(main_layout[2], buf);
+        self.render_main_section(crates_list_area, buf);
+
+        self.render_dependencies_list(dependencies_to_add_area, buf);
+
+        self.render_footer_instructions(footer_area, buf);
 
         if self.is_adding_deps {
             let center = centered_rect(60, 20, area);
@@ -179,16 +187,7 @@ impl AppView {
     }
 
     pub fn render_categories_list(&mut self, area: Rect, buf: &mut Buffer) {
-        let block_tabs = Block::default()
-            .title(Title::from(Line::from(vec![
-                "go down ".into(),
-                "<Tab> ".blue(),
-                "go up ".into(),
-                "<Shift + Tab>".blue(),
-            ])))
-            .title_position(Position::Bottom)
-            .borders(Borders::ALL)
-            .border_set(border::ROUNDED);
+        let block_tabs = Block::bordered().border_set(border::ROUNDED);
 
         block_tabs.render(area, buf);
 
@@ -207,24 +206,24 @@ impl AppView {
 
     pub fn render_main_section(&mut self, area: Rect, buf: &mut Buffer) {
         let instructions = Title::from(Line::from(vec![
-            "Check docs".into(),
-            "<d>".blue(),
-            "Check crates.io".into(),
-            "<c>".blue(),
-            " Toggle select ".into(),
-            "<s>".blue(),
-            " Toggle select all ".into(),
-            "<a>".blue(),
+            "Move down ".into(),
+            "<Down> <j> ".bold().blue(),
+            "Move up ".into(),
+            "<Up> <k> ".bold().blue(),
+            "Check docs ".into(),
+            "<d> ".blue(),
+            "Check crates.io ".into(),
+            "<c> ".blue(),
         ]));
 
         Block::bordered()
             .title("Crate name, description")
+            .border_set(border::ROUNDED)
             .title(
                 instructions
-                    .alignment(Alignment::Right)
-                    .position(Position::Bottom),
+                    .position(Position::Bottom)
+                    .alignment(Alignment::Center),
             )
-            .border_set(border::ROUNDED)
             .render(area, buf);
 
         let inner_area_for_list = area.inner(&Margin {
@@ -348,6 +347,22 @@ impl AppView {
             buf,
             &mut self.dependencies_to_add_list.state,
         );
+    }
+
+    fn render_footer_instructions(&mut self, area: Rect, buf: &mut Buffer) {
+        FooterInstructions::new(vec![
+            " Next category ".into(),
+            "<Tab>".blue(),
+            " Previous category ".into(),
+            "<Tab>".blue(),
+            " Toggle select ".into(),
+            "<s>".blue(),
+            " Toggle select all ".into(),
+            "<a>".blue(),
+            " Add selected dependencies ".into(),
+            "<Enter>".bold().blue(),
+        ])
+        .render(area, buf);
     }
 
     pub fn scroll_down(&mut self) {
@@ -528,10 +543,6 @@ impl AppView {
 
     pub fn show_popup(&mut self) {
         self.is_adding_deps = true;
-    }
-
-    pub fn add_dependencies(&mut self) {
-        self.show_popup();
     }
 
     pub fn check_docs(&self) {

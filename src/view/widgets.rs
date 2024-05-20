@@ -1,11 +1,8 @@
-use std::default;
-
 use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
 
 use ratatui::{
     prelude::*,
     style::{palette::tailwind, Style},
-    symbols::border,
     widgets::{block::*, *},
 };
 use throbber_widgets_tui::{Throbber, ThrobberState};
@@ -34,7 +31,7 @@ impl StatefulWidget for Popup {
         });
 
         let message = if self.message.is_empty() {
-            "Adding dependencies"
+            "Adding dependencies, this may take a while"
         } else {
             self.message.as_ref()
         };
@@ -81,11 +78,7 @@ impl StatefulWidget for DependenciesListWidget {
             .block(
                 Block::bordered()
                     .padding(Padding::uniform(2))
-                    .title("Dependencies to add")
-                    .title(Title::from(vec![
-                        "Add deps".into(),
-                        "<Enter>".bold().blue(),
-                    ])),
+                    .title("Dependencies to add"),
             )
             .highlight_style(Style::default().blue())
             .highlight_symbol("* ")
@@ -234,5 +227,33 @@ impl StatefulWidget for CategoriesTabs {
             .highlight_style(Style::default().yellow());
 
         StatefulWidget::render(list, area, buf, state);
+    }
+}
+
+#[derive(Debug)]
+pub struct FooterInstructions<'a> {
+    instructions: Vec<Span<'a>>,
+}
+
+impl<'a> FooterInstructions<'a> {
+    pub fn new(instructions: Vec<Span<'a>>) -> Self {
+        FooterInstructions { instructions }
+    }
+}
+
+impl<'a> Widget for FooterInstructions<'a> {
+    fn render(self, area: Rect, buf: &mut Buffer)
+    where
+        Self: Sized,
+    {
+        let instructions = Title::from(Line::from(self.instructions));
+
+        let block = Block::bordered().title(
+            instructions
+                .alignment(Alignment::Center)
+                .position(Position::Bottom),
+        );
+
+        block.render(area, buf);
     }
 }

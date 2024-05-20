@@ -2,13 +2,10 @@ use std::io;
 
 use color_eyre::config::HookBuilder;
 use crossterm::{
-    event::KeyEvent,
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
 
-pub type Tui = Terminal<CrosstermBackend<io::Stdout>>;
 
 /// Initialize the terminal
 pub fn init() -> io::Result<()> {
@@ -37,12 +34,4 @@ pub fn init_error_hooks() -> color_eyre::Result<()> {
         panic(info);
     }));
     Ok(())
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum Event {
-    /// Terminal tick.
-    Tick,
-    /// Key press.
-    Key(KeyEvent),
 }

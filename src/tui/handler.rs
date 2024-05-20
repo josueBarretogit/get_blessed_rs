@@ -1,55 +1,58 @@
-use core::time;
-use std::{error::Error, io, process, time::Duration};
+use std::{error::Error, time::Duration};
 
-use crossterm::{
-    event::{KeyCode, KeyEvent, KeyEventKind},
-    terminal,
-};
+use crossterm::event::{KeyCode,  KeyEventKind};
 use ratatui::{backend::CrosstermBackend, Terminal};
-use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
+use tokio::sync::mpsc::{self,  UnboundedSender};
 
 use crate::{dependency_builder::DependenciesBuilder, view::ui::AppView};
 
-use super::tui::{init, init_error_hooks, restore};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Action {
-    None,
     Tick,
     ShowLoadingAddingDeps,
     AddingDeps,
     ScrollUp,
     ScrollDown,
-    SelectAll,
-    ShowAddingOperation,
+    ScrollNextCategory,
+    ScrollPreviousCategory,
+    ToggleAll,
+    ToggleOne,
+    CheckDocs,
+    CheckCratesIo,
+    ShowAddingDependenciesOperation,
     Quit,
 }
 
-pub fn update(app: &mut AppView, even: Action) {
-    match even {
-        Action::ShowAddingOperation => {
+pub fn update(app: &mut AppView, action: Action) {
+    match action {
+        Action::ShowAddingDependenciesOperation => {
             let tx = app.action_tx.clone();
-            app.set_adding_deps_operation_message(" Dependencies added successfully ");
+            app.set_adding_deps_operation_message("Dependencies added successfully ✓");
 
             tokio::spawn(async move {
-                tokio::time::sleep(Duration::from_secs(2)).await;
+                tokio::time::sleep(Duration::from_millis(1200)).await;
                 tx.send(Action::Quit).unwrap();
             });
         }
 
+        Action::CheckDocs => app.check_docs(),
+        Action::CheckCratesIo => app.check_crates_io(),
+        Action::ScrollPreviousCategory => app.previos_tab(),
+        Action::ScrollNextCategory => app.next_tab(),
+        Action::ToggleOne => app.toggle_select_dependencie(),
+        Action::ToggleAll => app.toggle_select_all_dependencies(),
         Action::Tick => {
             app.on_tick();
         }
 
         Action::ScrollUp => app.scroll_up(),
         Action::ScrollDown => app.scroll_down(),
-        Action::SelectAll => app.toggle_select_all_dependencies(),
         Action::Quit => app.exit(),
-        Action::None => {}
 
         Action::ShowLoadingAddingDeps => {
             let tx = app.action_tx.clone();
-            app.add_dependencies();
+            app.show_popup();
 
             tokio::spawn(async move {
                 tx.send(Action::AddingDeps).unwrap();
@@ -65,7 +68,7 @@ pub fn update(app: &mut AppView, even: Action) {
             tokio::spawn(async move {
                 match deps_builder.add_dependencies() {
                     Ok(_) => {
-                        tx.send(Action::ShowAddingOperation).unwrap();
+                        tx.send(Action::ShowAddingDependenciesOperation).unwrap();
                     }
                     Err(_) => todo!(),
                 }
@@ -76,31 +79,30 @@ pub fn update(app: &mut AppView, even: Action) {
 pub fn handle_event(tx: UnboundedSender<Action>) -> tokio::task::JoinHandle<()> {
     let tick_rate = std::time::Duration::from_millis(250);
 
-    let mut last_tick = std::time::Instant::now();
-
     tokio::spawn(async move {
-        let timeout = tick_rate
-            .checked_sub(last_tick.elapsed())
-            .unwrap_or_else(|| std::time::Duration::from_secs(0));
-
         loop {
-            let action = if crossterm::event::poll(timeout).unwrap() {
+            let action = if crossterm::event::poll(tick_rate).unwrap() {
                 if let crossterm::event::Event::Key(key) = crossterm::event::read().unwrap() {
                     if key.kind == KeyEventKind::Press {
                         match key.code {
                             KeyCode::Enter => Action::ShowLoadingAddingDeps,
-                            KeyCode::Up => Action::ScrollUp,
-                            KeyCode::Down => Action::ScrollDown,
-                            KeyCode::Char('q') => Action::Quit,
-                            KeyCode::Char('a') => Action::SelectAll,
+
+                            KeyCode::Char('q') | KeyCode::Esc => Action::Quit,
+                            KeyCode::Tab => Action::ScrollNextCategory,
+                            KeyCode::BackTab => Action::ScrollPreviousCategory,
+                            KeyCode::Down | KeyCode::Char('j') => Action::ScrollDown,
+                            KeyCode::Up | KeyCode::Char('k') => Action::ScrollUp,
+
+                            KeyCode::Char('a') => Action::ToggleAll,
+                            KeyCode::Char('s') => Action::ToggleOne,
+                            KeyCode::Char('d') => Action::CheckDocs,
+                            KeyCode::Char('c') => Action::CheckCratesIo,
+
                             _ => Action::Tick,
                         }
                     } else {
                         Action::Tick
                     }
-                } else if last_tick.elapsed() >= tick_rate {
-                    last_tick = std::time::Instant::now();
-                    Action::Tick
                 } else {
                     Action::Tick
                 }
@@ -142,20 +144,4 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
     task.abort();
 
     Ok(())
-}
-
-pub async fn handle_key_events(app: &mut AppView, code: KeyCode, should_exit: &mut bool) {
-    match code {
-        KeyCode::Char('q') | KeyCode::Esc => *should_exit = true,
-        KeyCode::Tab => app.next_tab(),
-        KeyCode::BackTab => app.previos_tab(),
-        KeyCode::Down | KeyCode::Char('j') => app.scroll_down(),
-        KeyCode::Up | KeyCode::Char('k') => app.scroll_up(),
-
-        KeyCode::Char('s') => app.toggle_select_dependencie(),
-        KeyCode::Char('a') => app.toggle_select_all_dependencies(),
-        KeyCode::Char('d') => app.check_docs(),
-        KeyCode::Char('c') => app.check_crates_io(),
-        _ => {}
-    }
 }

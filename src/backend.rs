@@ -1,24 +1,23 @@
-use fake::Dummy;
 use strum::{Display, EnumIter, FromRepr};
 
 use crate::view::widgets::{CrateItemList, ItemListStatus};
 
 pub mod backend;
 
-#[derive(Default, Debug, Clone, Dummy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Crates {
     pub name: String,
     pub description: String,
     pub docs: String,
 }
 
-#[derive(Default, Debug, Clone, Dummy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TableEntry {
     pub use_case: String,
     pub crates: Vec<Crates>,
 }
 
-#[derive(Default, Debug, Clone, Dummy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Table {
     pub entries: Vec<TableEntry>,
 }
