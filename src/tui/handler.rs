@@ -21,11 +21,22 @@ pub enum Action {
     ScrollUp,
     ScrollDown,
     SelectAll,
+    ShowAddingOperation,
     Quit,
 }
 
 pub fn update(app: &mut AppView, even: Action) {
     match even {
+        Action::ShowAddingOperation => {
+            let tx = app.action_tx.clone();
+            app.set_adding_deps_operation_message(" Dependencies added successfully ");
+
+            tokio::spawn(async move {
+                tokio::time::sleep(Duration::from_secs(2)).await;
+                tx.send(Action::Quit).unwrap();
+            });
+        }
+
         Action::Tick => {
             app.on_tick();
         }
@@ -39,21 +50,30 @@ pub fn update(app: &mut AppView, even: Action) {
         Action::ShowLoadingAddingDeps => {
             let tx = app.action_tx.clone();
             app.add_dependencies();
+
             tokio::spawn(async move {
                 tx.send(Action::AddingDeps).unwrap();
             });
         }
+
         Action::AddingDeps => {
+            let tx = app.action_tx.clone();
+
             let deps_builder =
                 DependenciesBuilder::new(app.dependencies_to_add_list.dependencies_to_add.clone());
-            match deps_builder.add_dependencies() {
-                Ok(_) => app.exit(),
-                Err(_) => todo!(),
-            }
+
+            tokio::spawn(async move {
+                match deps_builder.add_dependencies() {
+                    Ok(_) => {
+                        tx.send(Action::ShowAddingOperation).unwrap();
+                    }
+                    Err(_) => todo!(),
+                }
+            });
         }
     }
 }
-pub fn handle_event(app: &AppView, tx: UnboundedSender<Action>) -> tokio::task::JoinHandle<()> {
+pub fn handle_event(tx: UnboundedSender<Action>) -> tokio::task::JoinHandle<()> {
     let tick_rate = std::time::Duration::from_millis(250);
 
     let mut last_tick = std::time::Instant::now();
@@ -64,31 +84,29 @@ pub fn handle_event(app: &AppView, tx: UnboundedSender<Action>) -> tokio::task::
             .unwrap_or_else(|| std::time::Duration::from_secs(0));
 
         loop {
-            let mut action = if crossterm::event::poll(timeout).unwrap() {
+            let action = if crossterm::event::poll(timeout).unwrap() {
                 if let crossterm::event::Event::Key(key) = crossterm::event::read().unwrap() {
                     if key.kind == KeyEventKind::Press {
                         match key.code {
                             KeyCode::Enter => Action::ShowLoadingAddingDeps,
                             KeyCode::Up => Action::ScrollUp,
                             KeyCode::Down => Action::ScrollDown,
-                            KeyCode::Tab => Action::Quit,
+                            KeyCode::Char('q') => Action::Quit,
                             KeyCode::Char('a') => Action::SelectAll,
-                            _ => Action::None,
+                            _ => Action::Tick,
                         }
                     } else {
-                        Action::None
+                        Action::Tick
                     }
+                } else if last_tick.elapsed() >= tick_rate {
+                    last_tick = std::time::Instant::now();
+                    Action::Tick
                 } else {
-                    Action::None
+                    Action::Tick
                 }
             } else {
-                Action::None
+                Action::Tick
             };
-
-            if last_tick.elapsed() >= tick_rate {
-                action = Action::Tick;
-                last_tick = std::time::Instant::now();
-            }
 
             if let Err(_) = tx.send(action) {
                 break;
@@ -104,7 +122,7 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
 
     let mut app = AppView::new(action_tx.clone()).await;
 
-    let task = handle_event(&app, app.action_tx.clone());
+    let task = handle_event(app.action_tx.clone());
 
     loop {
         terminal.draw(|f| {

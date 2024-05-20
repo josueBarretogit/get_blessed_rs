@@ -27,6 +27,8 @@ pub struct AppView {
     pub category_tabs: CategoriesTabs,
 
     pub is_adding_deps: bool,
+
+    pub popup_widget: Popup,
     loader_state: throbber_widgets_tui::ThrobberState,
 
     pub exit: bool,
@@ -42,12 +44,6 @@ pub struct AppView {
     database_crates: Vec<CrateItemList>,
     clis_crates: Vec<CrateItemList>,
     graphics_crates: Vec<CrateItemList>,
-}
-
-#[derive(Default)]
-pub enum AppModes {
-    #[default]
-    AddingDeps,
 }
 
 #[derive(Default)]
@@ -92,27 +88,19 @@ impl Widget for &mut AppView {
         self.render_dependencies_list(main_layout[2], buf);
 
         if self.is_adding_deps {
-            let popup = Popup::default();
             let center = centered_rect(60, 20, area);
             Clear::default().render(center, buf);
-            StatefulWidget::render(popup, center, buf, &mut self.loader_state)
+            StatefulWidget::render(
+                self.popup_widget.clone(),
+                center,
+                buf,
+                &mut self.loader_state,
+            )
         }
     }
 }
 
 impl AppView {
-    pub fn run(&mut self, terminal: &mut Tui) -> io::Result<()> {
-        while !self.exit {
-            terminal.draw(|frame| self.render_frame(frame))?;
-            self.handle_events()?;
-        }
-        Ok(())
-    }
-
-    fn render_frame(&mut self, frame: &mut Frame) {
-        frame.render_widget(self, frame.size());
-    }
-
     pub async fn new(action_tx: UnboundedSender<Action>) -> Self {
         let page_contents = ContentParser::new().await;
 
@@ -161,32 +149,13 @@ impl AppView {
             categories_list_state: list_state,
 
             exit: false,
+
+            popup_widget: Popup::default(),
         }
     }
 
-    pub fn handle_events(&mut self) -> io::Result<()> {
-        match event::read()? {
-            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                self.handle_key_event(key_event)
-            }
-            _ => {}
-        };
-        Ok(())
-    }
-
-    fn handle_key_event(&mut self, key_event: KeyEvent) {
-        match key_event.code {
-            KeyCode::Char('q') | KeyCode::Esc => self.exit(),
-            KeyCode::Tab => self.next_tab(),
-            KeyCode::BackTab => self.previos_tab(),
-            KeyCode::Down | KeyCode::Char('j') => self.scroll_down(),
-            KeyCode::Up | KeyCode::Char('k') => self.scroll_up(),
-            KeyCode::Char('s') => self.toggle_select_dependencie(),
-            KeyCode::Char('a') => self.toggle_select_all_dependencies(),
-            KeyCode::Char('d') => self.check_docs(),
-            KeyCode::Char('c') => self.check_crates_io(),
-            _ => {}
-        }
+    pub fn set_adding_deps_operation_message(&mut self, message: &str) {
+        self.popup_widget.message = message.to_string();
     }
 
     pub fn exit(&mut self) {

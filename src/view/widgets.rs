@@ -17,9 +17,9 @@ pub enum ItemListStatus {
     Unselected,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Popup {
-    error_message: String,
+    pub message: String,
 }
 
 impl StatefulWidget for Popup {
@@ -33,8 +33,14 @@ impl StatefulWidget for Popup {
             horizontal: 1,
         });
 
+        let message = if self.message.is_empty() {
+            "Adding dependencies"
+        } else {
+            self.message.as_ref()
+        };
+
         let loader = Throbber::default()
-            .label("Adding dependencies...")
+            .label(message)
             .throbber_set(throbber_widgets_tui::BRAILLE_SIX)
             .use_type(throbber_widgets_tui::WhichUse::Spin);
 
