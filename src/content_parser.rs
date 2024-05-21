@@ -10,7 +10,7 @@ mod test {
 
     #[test]
     fn general_table_has_expected_data() {
-        //I dont know how to test this xd 
+        //I dont know how to test this xd
         todo!()
     }
 }

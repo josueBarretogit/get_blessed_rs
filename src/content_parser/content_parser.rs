@@ -80,7 +80,7 @@ impl ContentParser {
                         Crates {
                             name: "uuid".into(),
                             description: "Implements generating and parsing UUIDs and a number of utility functions,".into(),
-                            features : Some(vec!["v4".into(), "serde".into()])
+                            features : Some(vec!["v4 ".into(), "serde ".into()])
                         },
                     ].to_vec(),
                 },
@@ -145,7 +145,7 @@ impl ContentParser {
                         Crates {
                             name: "ureq".into(),
                             description: "Minimal synchronous HTTP client focussed on simplicity and minimising dependencies.,".into(),
-                            features : Some(vec!["json".into(), "charset".into()])
+                            features : Some(vec!["json ".into(), "charset ".into()])
                         },
                     ].to_vec(),
                 },
@@ -323,7 +323,7 @@ impl ContentParser {
                         Crates {
                             name: "mlua".into(),
                             description: "Bindings to Lua 5.4, 5.3, 5.2, 5.1 (including LuaJIT),".into(),
-                            features : Some(vec!["lua54".into(), "vendored".into()])
+                            features : Some(vec!["lua54 ".into(), "vendored ".into()])
                         },
                     ].to_vec(),
                 },
@@ -641,7 +641,7 @@ impl ContentParser {
                 Crates {
                     name: "slog".into(),
                     description: "Structured logging".into(),
-                            features : Some(vec!["max_level_trace".into(), "release_max_level_warn".into()])
+                            features : Some(vec!["max_level_trace ".into(), "release_max_level_warn ".into()])
                 },
             ].to_vec(),
         },
@@ -1120,7 +1120,7 @@ impl ContentParser {
                 Crates {
                     name: "dashmap".into(),
                     description: "The fastest for general purpose workloads".into(),
-                            features : Some(vec!["serde".into(), "rayon".into()])
+                            features : Some(vec!["serde ".into(), "rayon ".into()])
                 },
                 Crates {
                     name: "flurry".into(),

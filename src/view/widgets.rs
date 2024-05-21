@@ -238,7 +238,7 @@ impl<'a> Widget for FooterInstructions<'a> {
     {
         let instructions = Title::from(Line::from(self.instructions));
 
-        let info = Title::from(Line::from(vec!["V0.1.0".into()]))
+        let info = Title::from(Line::from(vec!["V0.1.3".into()]))
             .position(Position::Top)
             .alignment(Alignment::Right);
 

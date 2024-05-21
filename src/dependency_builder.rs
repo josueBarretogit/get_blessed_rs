@@ -27,7 +27,7 @@ impl DependenciesBuilder {
     pub fn add_dependencies(&self) -> io::Result<()> {
         for dependency in self.crates_to_add.clone() {
             if let Some(features) = dependency.features {
-                let features: String = features.iter().map(|feat| feat.to_string()).collect();
+                let features: String = features.iter().map(|feat| format!(" {} ", feat)).collect();
                 Command::new("cargo")
                     .arg("add")
                     .arg(dependency.crate_name)
