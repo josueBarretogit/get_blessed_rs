@@ -11,6 +11,7 @@ use ratatui::{
 use crate::{
     backend::{Categories, CategoriesWithSubCategories},
     content_parser::content_parser::ContentParser,
+    dependency_builder::CrateToAdd,
     tui::handler::Action,
     utils::{centered_rect, toggle_dependencies_all, toggle_one_dependency, toggle_status_all},
 };
@@ -52,12 +53,12 @@ pub struct CratesList {
 
 #[derive(Default, Clone)]
 pub struct DependenciesList {
-    pub dependencies_to_add: Vec<String>,
+    pub dependencies_to_add: Vec<CrateToAdd>,
     pub state: ListState,
 }
 
 impl DependenciesList {
-    pub const fn new(state: ListState, dependencies_to_add: Vec<String>) -> Self {
+    pub const fn new(state: ListState, dependencies_to_add: Vec<CrateToAdd>) -> Self {
         Self {
             state,
             dependencies_to_add,
@@ -549,7 +550,9 @@ impl AppView {
 
     pub fn check_docs(&self) {
         if let Some(index_selected) = self.crates_list.state.selected() {
-            let url = &self.crates_list.crates_widget_list.crates[index_selected].docs;
+            let crate_name = &self.crates_list.crates_widget_list.crates[index_selected].name;
+            let url = format!("https://docs.rs/{}/latest/{}/", crate_name, crate_name);
+
             open::that(url).ok();
         }
     }

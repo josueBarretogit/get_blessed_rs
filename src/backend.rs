@@ -8,7 +8,7 @@ pub mod backend;
 pub struct Crates {
     pub name: String,
     pub description: String,
-    pub docs: String,
+    pub features: Option<Vec<String>>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -31,8 +31,8 @@ impl Into<Vec<CrateItemList>> for crate::backend::Table {
                 items.push(CrateItemList::new(
                     cr.name.to_owned(),
                     cr.description.to_owned(),
-                    cr.docs.to_owned(),
                     ItemListStatus::default(),
+                    cr.features.to_owned(),
                 ))
             })
         });
