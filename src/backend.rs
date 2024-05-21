@@ -43,9 +43,6 @@ impl Into<Vec<CrateItemList>> for crate::backend::Table {
 
 #[derive(Debug, Clone, FromRepr, Display, EnumIter)]
 pub enum Categories {
-    #[strum(to_string = "general")]
-    General,
-
     #[strum(to_string = "math-scientific")]
     Math,
 
