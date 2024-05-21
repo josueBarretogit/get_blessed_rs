@@ -7,6 +7,8 @@ use ratatui::{
 };
 use throbber_widgets_tui::{Throbber, ThrobberState};
 
+use crate::dependency_builder::CrateToAdd;
+
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ItemListStatus {
     Selected,
@@ -49,17 +51,17 @@ impl StatefulWidget for Popup {
 pub struct CrateItemList {
     pub name: String,
     pub description: String,
-    pub docs: String,
+    pub features: Option<Vec<String>>,
     pub status: ItemListStatus,
 }
 
 #[derive(Clone, Default)]
 pub struct DependenciesListWidget {
-    pub dependencies: Vec<String>,
+    pub dependencies: Vec<CrateToAdd>,
 }
 
 impl DependenciesListWidget {
-    pub fn new(dependencies: Vec<String>) -> Self {
+    pub fn new(dependencies: Vec<CrateToAdd>) -> Self {
         Self { dependencies }
     }
 }
@@ -71,7 +73,8 @@ impl StatefulWidget for DependenciesListWidget {
         let items: Vec<Line<'_>> = self
             .dependencies
             .iter()
-            .map(|dep| Line::from(vec![dep.into(), " ✓ ".blue()]))
+            .cloned()
+            .map(|dep| Line::from(vec![dep.crate_name.into(), " ✓ ".blue()]))
             .collect();
 
         let list = List::new(items)
@@ -89,12 +92,17 @@ impl StatefulWidget for DependenciesListWidget {
 }
 
 impl CrateItemList {
-    pub fn new(name: String, description: String, docs: String, status: ItemListStatus) -> Self {
+    pub fn new(
+        name: String,
+        description: String,
+        status: ItemListStatus,
+        features: Option<Vec<String>>,
+    ) -> Self {
         Self {
             name,
             description,
-            docs,
             status,
+            features,
         }
     }
 }
@@ -230,7 +238,7 @@ impl<'a> Widget for FooterInstructions<'a> {
     {
         let instructions = Title::from(Line::from(self.instructions));
 
-        let info = Title::from(Line::from(vec!["V0.1.0".into()]))
+        let info = Title::from(Line::from(vec!["V0.1.3".into()]))
             .position(Position::Top)
             .alignment(Alignment::Right);
 

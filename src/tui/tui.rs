@@ -6,7 +6,6 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 
-
 /// Initialize the terminal
 pub fn init() -> io::Result<()> {
     execute!(io::stdout(), EnterAlternateScreen)?;
@@ -19,7 +18,6 @@ pub fn restore() -> io::Result<()> {
     disable_raw_mode()?;
     Ok(())
 }
-
 
 pub fn init_error_hooks() -> color_eyre::Result<()> {
     let (panic, error) = HookBuilder::default().into_hooks();

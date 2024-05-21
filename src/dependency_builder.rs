@@ -1,23 +1,46 @@
-use std::{io, process::Command};
+use std::{io, ops::Deref, process::Command};
 
 pub mod dependency_builder;
 
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CrateToAdd {
+    pub crate_name: String,
+    pub features: Option<Vec<String>>,
+}
+
+impl Deref for CrateToAdd {
+    type Target = CrateToAdd;
+    fn deref(&self) -> &Self::Target {
+        self
+    }
+}
+
 pub struct DependenciesBuilder {
-    crate_names: Vec<String>,
+    crates_to_add: Vec<CrateToAdd>,
 }
 
 impl DependenciesBuilder {
-    pub fn new(crate_names: Vec<String>) -> Self {
-        Self { crate_names }
+    pub fn new(crates_to_add: Vec<CrateToAdd>) -> Self {
+        Self { crates_to_add }
     }
 
     pub fn add_dependencies(&self) -> io::Result<()> {
-        for dependency in self.crate_names.clone() {
-            Command::new("cargo")
-                .arg("add")
-                .arg(dependency)
-                .arg("-q")
-                .output()?;
+        for dependency in self.crates_to_add.clone() {
+            if let Some(features) = dependency.features {
+                let features: String = features.iter().map(|feat| format!(" {} ", feat)).collect();
+                Command::new("cargo")
+                    .arg("add")
+                    .arg(dependency.crate_name)
+                    .arg("-F")
+                    .arg(features)
+                    .output()?;
+            } else {
+                Command::new("cargo")
+                    .arg("add")
+                    .arg(dependency.crate_name)
+                    .arg("-q")
+                    .output()?;
+            }
         }
         Ok(())
     }
