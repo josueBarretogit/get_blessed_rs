@@ -1,6 +1,6 @@
 [package]
 name = "get-blessed"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Josue <josuebarretogit@gmail.com>"]
 readme = "README.md"
