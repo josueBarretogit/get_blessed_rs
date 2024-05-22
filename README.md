@@ -12,4 +12,6 @@ Terminal tool to get you the best crates for your rust projects with a few keybi
   cargo install get-blessed
 ```
 
-Please feel free to suggest new features or report any bugs / inconsistencies 
+Arch Linux users can install [from the AUR](https://aur.archlinux.org/packages/get-blessed) via `paru -S get-blessed`.
+
+Please feel free to suggest new features or report any bugs / inconsistencies
