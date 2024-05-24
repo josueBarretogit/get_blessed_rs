@@ -45,7 +45,6 @@ pub fn update(app: &mut AppView, action: Action) {
         Action::Tick => {
             app.on_tick();
         }
-
         Action::ScrollUp => app.scroll_up(),
         Action::ScrollDown => app.scroll_down(),
         Action::Quit => app.exit(),
@@ -70,7 +69,8 @@ pub fn update(app: &mut AppView, action: Action) {
                     Ok(_) => {
                         tx.send(Action::ShowAddingDependenciesOperation).unwrap();
                     }
-                    Err(e) => panic!("An Error ocurred, please report it on github: https://github.com/josueBarretogit/get_blessed_rs \n details: {e}"),
+                    Err(e) => panic!("An Error ocurred, please report it on github: https://github.com/josueBarretogit/get_blessed_rs \n
+                    details: {e}"),
                 }
             });
         }
@@ -110,7 +110,7 @@ pub fn handle_event(tx: UnboundedSender<Action>) -> tokio::task::JoinHandle<()> 
                 Action::Tick
             };
 
-            if let Err(_) = tx.send(action) {
+            if tx.send(action).is_err() {
                 break;
             }
         }

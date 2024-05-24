@@ -1,22 +1,18 @@
-use scraper::Html;
-
 use crate::{
     backend::{Categories, CategoriesWithSubCategories, Crates, Table, TableEntry},
-    scraper::scraper::scrape_site,
+    scraper::scraper::{scrape_site, CratesData},
 };
 
+#[derive(Debug)]
 pub struct ContentParser {
-    content: Html,
+    pub content: CratesData,
 }
 
 impl ContentParser {
     pub async fn new() -> Self {
         let page_content = scrape_site().await.unwrap();
-
-        let html_content = Html::parse_document(&page_content);
-
         Self {
-            content: html_content,
+            content: page_content,
         }
     }
 
