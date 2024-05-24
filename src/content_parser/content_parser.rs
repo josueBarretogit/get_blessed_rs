@@ -6,11 +6,38 @@ use crate::{
 #[derive(Debug)]
 pub struct ContentParser {
     pub content: CratesData,
+
+    general_crates: Table,
+    math_crates: Table,
+    ffi_crates: Table,
+    cryptography_crates: Table,
+    common_crates: Table,
+    concurrency_crates: Table,
+    networking_crates: Table,
+    database_crates: Table,
+    clis_crates: Table,
+    graphics_crates: Table,
+
 }
 
 impl ContentParser {
     pub async fn new() -> Self {
         let page_content = scrape_site().await.unwrap();
+        
+        let mut general_crates = Table::default();
+
+        page_content.crate_groups.iter().for_each(|group| {
+            match group.name.trim().to_lowercase().as_str() {
+                "common" => {
+                    let mut general_group = group.subgroups.unwrap().iter();
+                    let general_table = general_group.find(|gr| gr.name.trim().to_lowercase().as_str() == "general");
+                    general_crates = general_table.unwrap().into();
+                },
+                _ => {}
+
+            }
+        });
+
         Self {
             content: page_content,
         }
