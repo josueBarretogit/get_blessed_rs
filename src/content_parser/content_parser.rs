@@ -20,7 +20,7 @@ pub struct ContentParser {
 }
 
 impl ContentParser {
-    pub async fn new() -> Self {
+    pub async fn parse_content() -> Self {
         let page_content = scrape_site().await.unwrap();
 
         let mut general_crates = Table::default();

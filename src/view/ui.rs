@@ -116,8 +116,8 @@ impl Widget for &mut AppView {
 }
 
 impl AppView {
-    pub async fn new(action_tx: UnboundedSender<Action>) -> Self {
-        let page_contents = ContentParser::new().await;
+    pub async fn setup(action_tx: UnboundedSender<Action>) -> Self {
+        let page_contents = ContentParser::parse_content().await;
 
         let mut list_state = ListState::default();
 

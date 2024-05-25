@@ -122,7 +122,7 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
 
     let (action_tx, mut action_rx) = mpsc::unbounded_channel::<Action>();
 
-    let mut app = AppView::new(action_tx.clone()).await;
+    let mut app = AppView::setup(action_tx.clone()).await;
 
     let task = handle_event(app.action_tx.clone());
 
