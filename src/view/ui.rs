@@ -14,7 +14,7 @@ use ratatui::{
 
 use crate::{
     backend::{Categories, CategoriesWithSubCategories},
-    content_parser::content_parser::ContentParser,
+    content_parser::{ContentParser},
     dependency_builder::CrateToAdd,
     tui::handler::Action,
     utils::{centered_rect, toggle_dependencies_all, toggle_one_dependency, toggle_status_all},
@@ -49,6 +49,7 @@ pub struct AppView {
     database_crates: Vec<CrateItemList>,
     clis_crates: Vec<CrateItemList>,
     graphics_crates: Vec<CrateItemList>,
+
 }
 
 #[derive(Default)]
@@ -116,8 +117,8 @@ impl Widget for &mut AppView {
 }
 
 impl AppView {
-    pub async fn setup(action_tx: UnboundedSender<Action>) -> Self {
-        let page_contents = ContentParser::parse_content().await;
+    pub fn setup(action_tx: UnboundedSender<Action>, parser : &dyn ContentParser) -> Self {
+        let page_contents = parser;
 
         let mut list_state = ListState::default();
 

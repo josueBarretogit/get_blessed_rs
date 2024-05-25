@@ -3,8 +3,10 @@ use crate::{
     scraper::scraper::{scrape_site, CratesData, Group},
 };
 
+use super::ContentParser;
+
 #[derive(Debug)]
-pub struct ContentParser {
+pub struct JsonContentParser {
     pub content: CratesData,
 
     general_crates: Table,
@@ -19,7 +21,7 @@ pub struct ContentParser {
     graphics_crates: Table,
 }
 
-impl ContentParser {
+impl JsonContentParser {
     pub async fn parse_content() -> Self {
         let page_content = scrape_site().await.unwrap();
 
@@ -87,11 +89,18 @@ impl ContentParser {
         }
     }
 
-    pub fn get_general_crates(&self) -> Table {
+    
+
+}
+
+
+impl ContentParser for JsonContentParser  {
+
+ fn get_general_crates(&self) -> Table {
         self.general_crates.clone()
     }
 
-    pub fn get_crates(&self, category: &Categories) -> Table {
+     fn get_crates(&self, category: &Categories) -> Table {
         match category {
             Categories::FFI => self.ffi_crates.clone(),
             Categories::Math => self.math_crates.clone(),
@@ -99,7 +108,7 @@ impl ContentParser {
         }
     }
 
-    pub fn get_crates_with_sub(&self, category: &CategoriesWithSubCategories) -> Table {
+     fn get_crates_with_sub(&self, category: &CategoriesWithSubCategories) -> Table {
         match category {
             CategoriesWithSubCategories::Clis => self.clis_crates.clone(),
             CategoriesWithSubCategories::Common => self.common_crates.clone(),
@@ -109,4 +118,5 @@ impl ContentParser {
             CategoriesWithSubCategories::Concurrency => self.concurrency_crates.clone(),
         }
     }
+
 }

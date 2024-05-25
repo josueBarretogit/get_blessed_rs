@@ -5,6 +5,7 @@ use crossterm::event::{KeyCode, KeyEventKind};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
+use crate::content_parser::content_parser::JsonContentParser;
 use crate::{dependency_builder::DependenciesBuilder, view::ui::AppView};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -122,7 +123,9 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
 
     let (action_tx, mut action_rx) = mpsc::unbounded_channel::<Action>();
 
-    let mut app = AppView::setup(action_tx.clone()).await;
+    let json_parser = JsonContentParser::parse_content().await;
+
+    let mut app = AppView::setup(action_tx.clone(), &json_parser);
 
     let task = handle_event(app.action_tx.clone());
 

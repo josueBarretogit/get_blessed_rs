@@ -1,7 +1,15 @@
-use crate::backend::{Crates, Table, TableEntry};
+use crate::backend::{Categories, CategoriesWithSubCategories, Crates, Table, TableEntry};
 use crate::scraper::scraper::Group;
 
 pub mod content_parser;
+
+pub trait ContentParser {
+     fn get_general_crates(&self) -> Table;
+
+     fn get_crates(&self, category: &Categories) -> Table;
+
+     fn get_crates_with_sub(&self, category: &CategoriesWithSubCategories) -> Table;
+}
 
 impl From<&Group> for Table {
     fn from(value: &Group) -> Self {
@@ -57,20 +65,5 @@ impl From<&Group> for Table {
             }
         };
         Table { entries }
-    }
-}
-
-#[cfg(test)]
-
-mod test {
-    use crate::{
-        backend::{Crates, Table, TableEntry},
-        content_parser::content_parser::ContentParser,
-    };
-
-    #[test]
-    fn general_table_has_expected_data() {
-        //I dont know how to test this xd
-        todo!()
     }
 }
