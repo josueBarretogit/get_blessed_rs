@@ -6,7 +6,10 @@ use tokio::sync::mpsc::UnboundedSender;
 use ratatui::{
     prelude::*,
     symbols::border,
-    widgets::{block::{Block, Position, Title}, Clear, ListState},
+    widgets::{
+        block::{Block, Position, Title},
+        Clear, ListState,
+    },
 };
 
 use crate::{
@@ -17,14 +20,20 @@ use crate::{
     utils::{centered_rect, toggle_dependencies_all, toggle_one_dependency, toggle_status_all},
 };
 
-use super::widgets::{DependenciesListWidget, CategoriesTabs, CrateItemList, CratesListWidget, FooterInstructions, Popup};
+use super::widgets::{
+    CategoriesTabs, CrateItemList, CratesListWidget, DependenciesListWidget, FooterInstructions,
+    Popup,
+};
 
 pub struct AppView {
     pub action_tx: UnboundedSender<Action>,
     pub dependencies_to_add_list: DependenciesList,
     pub crates_list: CratesList,
-    pub category_tabs: CategoriesTabs,
-    is_adding_deps: bool,
+
+    category_tabs: CategoriesTabs,
+
+    is_adding_dependencies: bool,
+
     popup_widget: Popup,
     loader_state: throbber_widgets_tui::ThrobberState,
     pub exit: bool,
@@ -40,7 +49,6 @@ pub struct AppView {
     database_crates: Vec<CrateItemList>,
     clis_crates: Vec<CrateItemList>,
     graphics_crates: Vec<CrateItemList>,
-
 }
 
 #[derive(Default)]
@@ -57,7 +65,10 @@ pub struct DependenciesList {
 
 impl DependenciesList {
     pub const fn new(state: ListState, dependencies_to_add: Vec<CrateToAdd>) -> Self {
-        Self { dependencies_to_add, state }
+        Self {
+            dependencies_to_add,
+            state,
+        }
     }
 }
 
@@ -91,7 +102,7 @@ impl Widget for &mut AppView {
 
         self.render_footer_instructions(footer_area, buf);
 
-        if self.is_adding_deps {
+        if self.is_adding_dependencies {
             let center = centered_rect(60, 20, area);
             Clear.render(center, buf);
             StatefulWidget::render(
@@ -107,7 +118,6 @@ impl Widget for &mut AppView {
 impl AppView {
     pub async fn new(action_tx: UnboundedSender<Action>) -> Self {
         let page_contents = ContentParser::new().await;
-
 
         let mut list_state = ListState::default();
 
@@ -135,7 +145,7 @@ impl AppView {
             dependencies_to_add_list: DependenciesList::default(),
             crates_list: CratesList::default(),
             category_tabs: CategoriesTabs::default(),
-            is_adding_deps: false,
+            is_adding_dependencies: false,
             loader_state: ThrobberState::default(),
 
             general_crates: general_crates.into(),
@@ -205,13 +215,9 @@ impl AppView {
     pub fn render_main_section(&mut self, area: Rect, buf: &mut Buffer) {
         let instructions = Title::from(Line::from(vec![
             "Move down ".into(),
-            "<Down> <j> "
-                .bold()
-                .blue(),
+            "<Down> <j> ".bold().blue(),
             "Move up ".into(),
-            "<Up> <k> "
-                .bold()
-                .blue(),
+            "<Up> <k> ".bold().blue(),
             "Check docs ".into(),
             "<d> ".blue(),
             "Check crates.io ".into(),
@@ -547,7 +553,7 @@ impl AppView {
 
     #[inline]
     pub fn show_popup(&mut self) {
-        self.is_adding_deps = true;
+        self.is_adding_dependencies = true;
     }
 
     pub fn check_docs(&self) {

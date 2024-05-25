@@ -1,6 +1,6 @@
 use crate::{
-    backend::{Categories, CategoriesWithSubCategories,  Table, },
-    scraper::scraper::{scrape_site, CratesData},
+    backend::{Categories, CategoriesWithSubCategories, Table},
+    scraper::scraper::{scrape_site, CratesData, Group},
 };
 
 #[derive(Debug)]
@@ -37,17 +37,28 @@ impl ContentParser {
         page_content.crate_groups.iter().for_each(|group| {
             match group.name.trim().to_lowercase().as_str() {
                 "common" => {
-                    //extract general table 
-                    //the rest collect belongs to common crates , ignoring general
-                    let mut common_table : Table = group.into();
+                    //extract general table
+                    //the rest belongs to common crates , ignoring general
+                    let mut common_table = Group::default();
 
                     let mut general_table = group.subgroups.as_ref().unwrap().iter();
 
-                    general_crates = general_table.find(|sub| sub.name.trim().to_lowercase() == "general").unwrap().into();
+                    general_crates = general_table
+                        .find(|sub| sub.name.trim().to_lowercase() == "general")
+                        .unwrap()
+                        .into();
 
-                    common_crates = common_table;
+                    let new_subgropus: Vec<Group> = group
+                        .subgroups
+                        .as_ref()
+                        .unwrap()
+                        .iter()
+                        .filter(|gr| gr.name.trim().to_lowercase() != "general")
+                        .cloned()
+                        .collect();
 
-
+                    common_table.subgroups = Some(new_subgropus);
+                    common_crates = Into::into(&common_table);
                 }
                 "math / scientific" => math_crates = group.into(),
                 "ffi / interop" => ffi_crates = group.into(),
@@ -95,8 +106,7 @@ impl ContentParser {
             CategoriesWithSubCategories::Graphics => self.graphics_crates.clone(),
             CategoriesWithSubCategories::Databases => self.database_crates.clone(),
             CategoriesWithSubCategories::Networking => self.networking_crates.clone(),
-            CategoriesWithSubCategories::Concurrency => self.concurrency_crates.clone()
-            
+            CategoriesWithSubCategories::Concurrency => self.concurrency_crates.clone(),
         }
     }
 }
