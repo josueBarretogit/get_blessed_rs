@@ -1,3 +1,5 @@
+
+#![warn(clippy::pedantic)]
 use std::error::Error;
 
 use tui::{
