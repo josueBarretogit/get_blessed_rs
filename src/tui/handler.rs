@@ -5,6 +5,7 @@ use crossterm::event::{KeyCode, KeyEventKind};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
+use crate::content_parser::content_parser::JsonContentParser;
 use crate::{dependency_builder::DependenciesBuilder, view::ui::AppView};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -45,7 +46,6 @@ pub fn update(app: &mut AppView, action: Action) {
         Action::Tick => {
             app.on_tick();
         }
-
         Action::ScrollUp => app.scroll_up(),
         Action::ScrollDown => app.scroll_down(),
         Action::Quit => app.exit(),
@@ -70,7 +70,8 @@ pub fn update(app: &mut AppView, action: Action) {
                     Ok(_) => {
                         tx.send(Action::ShowAddingDependenciesOperation).unwrap();
                     }
-                    Err(e) => panic!("An Error ocurred, please report it on github: https://github.com/josueBarretogit/get_blessed_rs \n details: {e}"),
+                    Err(e) => panic!("An Error ocurred, please report it on github: https://github.com/josueBarretogit/get_blessed_rs \n
+                    details: {e}"),
                 }
             });
         }
@@ -110,7 +111,7 @@ pub fn handle_event(tx: UnboundedSender<Action>) -> tokio::task::JoinHandle<()> 
                 Action::Tick
             };
 
-            if let Err(_) = tx.send(action) {
+            if tx.send(action).is_err() {
                 break;
             }
         }
@@ -122,7 +123,9 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
 
     let (action_tx, mut action_rx) = mpsc::unbounded_channel::<Action>();
 
-    let mut app = AppView::new(action_tx.clone()).await;
+    let json_parser = JsonContentParser::parse_content().await;
+
+    let mut app = AppView::setup(action_tx.clone(), &json_parser);
 
     let task = handle_event(app.action_tx.clone());
 

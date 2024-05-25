@@ -3,7 +3,10 @@ use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
 use ratatui::{
     prelude::*,
     style::{palette::tailwind, Style},
-    widgets::{block::*, *},
+    widgets::{
+        block::{Block, Padding, Position, Title},
+        HighlightSpacing, List, ListDirection, ListItem, ListState,
+    },
 };
 use throbber_widgets_tui::{Throbber, ThrobberState};
 
@@ -43,7 +46,7 @@ impl StatefulWidget for Popup {
             .throbber_set(throbber_widgets_tui::BRAILLE_SIX)
             .use_type(throbber_widgets_tui::WhichUse::Spin);
 
-        StatefulWidget::render(loader, inner_area, buf, state)
+        StatefulWidget::render(loader, inner_area, buf, state);
     }
 }
 
@@ -101,8 +104,8 @@ impl CrateItemList {
         Self {
             name,
             description,
-            status,
             features,
+            status,
         }
     }
 }
@@ -112,17 +115,17 @@ pub struct CratesListWidget {
     pub crates: Vec<CrateItemList>,
 }
 
-impl Into<ListItem<'_>> for CrateItemList {
-    fn into(self) -> ListItem<'static> {
-        let (is_selected, bg_color) = match self.status {
+impl From<CrateItemList> for ListItem<'_> {
+    fn from(val: CrateItemList) -> Self {
+        let (is_selected, bg_color) = match val.status {
             ItemListStatus::Selected => ("✓", tailwind::BLUE.c300),
             ItemListStatus::Unselected => ("☐", Color::default()),
         };
 
         let line = Line::from(vec![
-            self.name.bold().blue(),
+            val.name.bold().blue(),
             " ".into(),
-            self.description.into(),
+            val.description.into(),
             " ".into(),
             is_selected.into(),
         ]);
@@ -148,7 +151,7 @@ impl StatefulWidget for CratesListWidget {
 }
 
 impl CratesListWidget {
-    pub fn new(crates: &Vec<CrateItemList>) -> Self {
+    pub fn new(crates: &[CrateItemList]) -> Self {
         Self {
             crates: crates.to_vec(),
         }
@@ -188,6 +191,7 @@ pub enum CategoriesTabs {
     Graphics,
 }
 
+//Heavy use of unwrap here, this is infalle, I think
 impl CategoriesTabs {
     pub fn next(self) -> Self {
         let current_index = self as usize;
@@ -198,7 +202,11 @@ impl CategoriesTabs {
     pub fn previous(self) -> Self {
         let current_index = self as usize;
         let previous_index = current_index.saturating_sub(1);
-        Self::from_repr(previous_index).unwrap_or(self)
+        if current_index == 0 {
+            return Self::from_repr(Self::iter().len() - 1).unwrap();
+        }
+
+        Self::from_repr(previous_index).unwrap()
     }
 }
 

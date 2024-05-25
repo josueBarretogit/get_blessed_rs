@@ -22,19 +22,19 @@ pub struct Table {
     pub entries: Vec<TableEntry>,
 }
 
-impl Into<Vec<CrateItemList>> for crate::backend::Table {
-    fn into(self) -> Vec<CrateItemList> {
+impl From<crate::backend::Table> for Vec<CrateItemList> {
+    fn from(val: crate::backend::Table) -> Self {
         let mut items: Vec<CrateItemList> = vec![];
 
-        self.entries.iter().for_each(|entr| {
+        val.entries.iter().for_each(|entr| {
             entr.crates.iter().for_each(|cr| {
                 items.push(CrateItemList::new(
-                    cr.name.to_owned(),
-                    cr.description.to_owned(),
+                    cr.name.clone(),
+                    cr.description.clone(),
                     ItemListStatus::default(),
-                    cr.features.to_owned(),
-                ))
-            })
+                    cr.features.clone(),
+                ));
+            });
         });
 
         items

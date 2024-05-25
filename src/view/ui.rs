@@ -1,3 +1,4 @@
+#![warn(clippy::pedantic)]
 use std::usize;
 use throbber_widgets_tui::ThrobberState;
 use tokio::sync::mpsc::UnboundedSender;
@@ -5,34 +6,39 @@ use tokio::sync::mpsc::UnboundedSender;
 use ratatui::{
     prelude::*,
     symbols::border,
-    widgets::{block::*, *},
+    widgets::{
+        block::{Block, Position, Title},
+        Clear, ListState,
+    },
 };
 
 use crate::{
     backend::{Categories, CategoriesWithSubCategories},
-    content_parser::content_parser::ContentParser,
+    content_parser::{ContentParser},
     dependency_builder::CrateToAdd,
     tui::handler::Action,
     utils::{centered_rect, toggle_dependencies_all, toggle_one_dependency, toggle_status_all},
 };
 
-use super::widgets::{DependenciesListWidget, *};
+use super::widgets::{
+    CategoriesTabs, CrateItemList, CratesListWidget, DependenciesListWidget, FooterInstructions,
+    Popup,
+};
 
 pub struct AppView {
     pub action_tx: UnboundedSender<Action>,
     pub dependencies_to_add_list: DependenciesList,
     pub crates_list: CratesList,
-    pub category_tabs: CategoriesTabs,
 
-    is_adding_deps: bool,
+    category_tabs: CategoriesTabs,
+
+    is_adding_dependencies: bool,
 
     popup_widget: Popup,
-
     loader_state: throbber_widgets_tui::ThrobberState,
-
     pub exit: bool,
-    categories_list_state: ListState,
 
+    categories_list_state: ListState,
     general_crates: Vec<CrateItemList>,
     math_crates: Vec<CrateItemList>,
     ffi_crates: Vec<CrateItemList>,
@@ -43,6 +49,7 @@ pub struct AppView {
     database_crates: Vec<CrateItemList>,
     clis_crates: Vec<CrateItemList>,
     graphics_crates: Vec<CrateItemList>,
+
 }
 
 #[derive(Default)]
@@ -60,8 +67,8 @@ pub struct DependenciesList {
 impl DependenciesList {
     pub const fn new(state: ListState, dependencies_to_add: Vec<CrateToAdd>) -> Self {
         Self {
-            state,
             dependencies_to_add,
+            state,
         }
     }
 }
@@ -96,49 +103,50 @@ impl Widget for &mut AppView {
 
         self.render_footer_instructions(footer_area, buf);
 
-        if self.is_adding_deps {
+        if self.is_adding_dependencies {
             let center = centered_rect(60, 20, area);
-            Clear::default().render(center, buf);
+            Clear.render(center, buf);
             StatefulWidget::render(
                 self.popup_widget.clone(),
                 center,
                 buf,
                 &mut self.loader_state,
-            )
+            );
         }
     }
 }
 
 impl AppView {
-    pub async fn new(action_tx: UnboundedSender<Action>) -> Self {
-        let page_contents = ContentParser::new().await;
+    pub fn setup(action_tx: UnboundedSender<Action>, parser : &dyn ContentParser) -> Self {
+        let page_contents = parser;
 
         let mut list_state = ListState::default();
 
         list_state.select(Some(0));
+
         let general_crates = page_contents.get_general_crates();
 
-        let math_crates = page_contents.get_crates(Categories::Math);
-        let ffi_crates = page_contents.get_crates(Categories::FFI);
-        let cryptography_crates = page_contents.get_crates(Categories::Cryptography);
+        let math_crates = page_contents.get_crates(&Categories::Math);
+        let ffi_crates = page_contents.get_crates(&Categories::FFI);
+        let cryptography_crates = page_contents.get_crates(&Categories::Cryptography);
 
-        let common_crates = page_contents.get_crates_with_sub(CategoriesWithSubCategories::Common);
+        let common_crates = page_contents.get_crates_with_sub(&CategoriesWithSubCategories::Common);
         let concurrency_crates =
-            page_contents.get_crates_with_sub(CategoriesWithSubCategories::Concurrency);
+            page_contents.get_crates_with_sub(&CategoriesWithSubCategories::Concurrency);
         let networking_crates =
-            page_contents.get_crates_with_sub(CategoriesWithSubCategories::Networking);
+            page_contents.get_crates_with_sub(&CategoriesWithSubCategories::Networking);
         let database_crates =
-            page_contents.get_crates_with_sub(CategoriesWithSubCategories::Databases);
-        let clis_crates = page_contents.get_crates_with_sub(CategoriesWithSubCategories::Clis);
+            page_contents.get_crates_with_sub(&CategoriesWithSubCategories::Databases);
+        let clis_crates = page_contents.get_crates_with_sub(&CategoriesWithSubCategories::Clis);
         let graphics_crates =
-            page_contents.get_crates_with_sub(CategoriesWithSubCategories::Graphics);
+            page_contents.get_crates_with_sub(&CategoriesWithSubCategories::Graphics);
 
         Self {
             action_tx,
             dependencies_to_add_list: DependenciesList::default(),
             crates_list: CratesList::default(),
             category_tabs: CategoriesTabs::default(),
-            is_adding_deps: false,
+            is_adding_dependencies: false,
             loader_state: ThrobberState::default(),
 
             general_crates: general_crates.into(),
@@ -544,14 +552,15 @@ impl AppView {
         }
     }
 
+    #[inline]
     pub fn show_popup(&mut self) {
-        self.is_adding_deps = true;
+        self.is_adding_dependencies = true;
     }
 
     pub fn check_docs(&self) {
         if let Some(index_selected) = self.crates_list.state.selected() {
             let crate_name = &self.crates_list.crates_widget_list.crates[index_selected].name;
-            let url = format!("https://docs.rs/{}/latest/{}/", crate_name, crate_name);
+            let url = format!("https://docs.rs/{crate_name}/latest/{crate_name}/");
 
             open::that(url).ok();
         }
@@ -567,7 +576,8 @@ impl AppView {
         }
     }
 
+    #[inline]
     pub fn on_tick(&mut self) {
-        self.loader_state.calc_next()
+        self.loader_state.calc_next();
     }
 }
