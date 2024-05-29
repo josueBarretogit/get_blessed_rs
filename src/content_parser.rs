@@ -27,7 +27,7 @@ impl From<&Group> for Table {
                             .notes
                             .clone()
                             .unwrap_or("No description".to_string()),
-                        features: None,
+                        features: Some(vec!["features".to_string(), "test".to_string()]),
                     });
                 }
 
@@ -53,7 +53,7 @@ impl From<&Group> for Table {
                                     .notes
                                     .clone()
                                     .unwrap_or("No description".to_string()),
-                                features: None,
+                                features: Some(vec!["feature".into(), "test".into()])
                             });
                         });
                     }

@@ -24,6 +24,44 @@ pub struct Popup {
     pub message: String,
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct FeaturesPopup {
+    pub features: Vec<String>,
+}
+
+impl FeaturesPopup{
+    pub fn new(features : Vec<String>) -> Self {
+        Self { features }
+    }
+}
+
+impl StatefulWidget for FeaturesPopup {
+
+    type State = ListState;
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+
+        Block::bordered().title("").render(area, buf);
+
+        let inner_area = area.inner(&Margin {
+            vertical: 1,
+            horizontal: 1,
+        });
+
+        let features_list = List::new(self.features)
+            
+            .highlight_style(Style::default().blue())
+            .highlight_symbol("* ")
+            .direction(ListDirection::TopToBottom);
+
+
+        StatefulWidget::render(features_list, inner_area, buf, state);
+        
+    }
+    
+}
+
+
+
 impl StatefulWidget for Popup {
     type State = ThrobberState;
 

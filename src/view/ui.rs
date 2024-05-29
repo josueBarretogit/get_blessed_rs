@@ -14,15 +14,15 @@ use ratatui::{
 
 use crate::{
     backend::{Categories, CategoriesWithSubCategories},
-    content_parser::{ContentParser},
+    content_parser::ContentParser,
     dependency_builder::CrateToAdd,
     tui::handler::Action,
     utils::{centered_rect, toggle_dependencies_all, toggle_one_dependency, toggle_status_all},
 };
 
 use super::widgets::{
-    CategoriesTabs, CrateItemList, CratesListWidget, DependenciesListWidget, FooterInstructions,
-    Popup,
+    CategoriesTabs, CrateItemList, CratesListWidget, DependenciesListWidget, FeaturesPopup,
+    FooterInstructions, Popup,
 };
 
 pub struct AppView {
@@ -35,8 +35,10 @@ pub struct AppView {
     is_adding_dependencies: bool,
 
     popup_widget: Popup,
+    list_features_state : ListState,
     loader_state: throbber_widgets_tui::ThrobberState,
     pub exit: bool,
+    is_showing_features: bool,
 
     categories_list_state: ListState,
     general_crates: Vec<CrateItemList>,
@@ -49,7 +51,6 @@ pub struct AppView {
     database_crates: Vec<CrateItemList>,
     clis_crates: Vec<CrateItemList>,
     graphics_crates: Vec<CrateItemList>,
-
 }
 
 #[derive(Default)]
@@ -113,11 +114,31 @@ impl Widget for &mut AppView {
                 &mut self.loader_state,
             );
         }
+
+        if self.is_showing_features {
+            let center = centered_rect(80, 20, area);
+            if let Some(crate_selected) = self.get_current_crate_selected() {
+
+                let features_popup = FeaturesPopup::new(
+                    crate_selected
+                        .features
+                        .unwrap_or(vec!["This crate has no features".to_string()]),
+                );
+
+                Clear.render(center, buf);
+                StatefulWidget::render(
+                    features_popup,
+                    center,
+                    buf,
+                    &mut self.list_features_state,
+                );
+            }
+        }
     }
 }
 
 impl AppView {
-    pub fn setup(action_tx: UnboundedSender<Action>, parser : &dyn ContentParser) -> Self {
+    pub fn setup(action_tx: UnboundedSender<Action>, parser: &dyn ContentParser) -> Self {
         let page_contents = parser;
 
         let mut list_state = ListState::default();
@@ -166,8 +187,10 @@ impl AppView {
             categories_list_state: list_state,
 
             exit: false,
+            is_showing_features: false,
 
             popup_widget: Popup::default(),
+            list_features_state :  ListState::default()
         }
     }
 
@@ -498,6 +521,14 @@ impl AppView {
         }
     }
 
+    fn get_current_crate_selected(&self) -> Option<CrateItemList> {
+        self.crates_list
+            .state
+            .selected()
+            .map(|index| Some(self.crates_list.crates_widget_list.crates[index].clone()))
+            .unwrap_or(None)
+    }
+
     pub fn toggle_select_dependencie(&mut self) {
         if let Some(index_crate_selected) = self.crates_list.state.selected() {
             match self.category_tabs {
@@ -579,5 +610,10 @@ impl AppView {
     #[inline]
     pub fn on_tick(&mut self) {
         self.loader_state.calc_next();
+    }
+
+    #[inline]
+    pub fn toggle_show_features(&mut self) {
+        self.is_showing_features = !self.is_showing_features
     }
 }

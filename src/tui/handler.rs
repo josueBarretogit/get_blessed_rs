@@ -11,6 +11,7 @@ use crate::{dependency_builder::DependenciesBuilder, view::ui::AppView};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Action {
     Tick,
+    ToggleShowFeatures,
     ShowLoadingAddingDeps,
     AddingDeps,
     ScrollUp,
@@ -27,6 +28,8 @@ pub enum Action {
 
 pub fn update(app: &mut AppView, action: Action) {
     match action {
+
+        Action::ToggleShowFeatures => app.toggle_show_features(),
         Action::ShowAddingDependenciesOperation => {
             let tx = app.action_tx.clone();
             app.set_adding_deps_operation_message("Dependencies added successfully ✓");
@@ -85,8 +88,7 @@ pub fn handle_event(tx: UnboundedSender<Action>) -> tokio::task::JoinHandle<()> 
             let action = if crossterm::event::poll(tick_rate).unwrap() {
                 if let crossterm::event::Event::Key(key) = crossterm::event::read().unwrap() {
                     if key.kind == KeyEventKind::Press {
-                        match key.code {
-                            KeyCode::Enter => Action::ShowLoadingAddingDeps,
+                        match key.code { KeyCode::Enter => Action::ShowLoadingAddingDeps,
 
                             KeyCode::Char('q') | KeyCode::Esc => Action::Quit,
                             KeyCode::Tab => Action::ScrollNextCategory,
@@ -98,6 +100,7 @@ pub fn handle_event(tx: UnboundedSender<Action>) -> tokio::task::JoinHandle<()> 
                             KeyCode::Char('s') => Action::ToggleOne,
                             KeyCode::Char('d') => Action::CheckDocs,
                             KeyCode::Char('c') => Action::CheckCratesIo,
+                            KeyCode::Char('f') => Action::ToggleShowFeatures,
 
                             _ => Action::Tick,
                         }
