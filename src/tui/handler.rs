@@ -28,7 +28,6 @@ pub enum Action {
 
 pub fn update(app: &mut AppView, action: Action) {
     match action {
-
         Action::ToggleShowFeatures => app.toggle_show_features(),
         Action::ShowAddingDependenciesOperation => {
             let tx = app.action_tx.clone();
@@ -49,8 +48,20 @@ pub fn update(app: &mut AppView, action: Action) {
         Action::Tick => {
             app.on_tick();
         }
-        Action::ScrollUp => app.scroll_up(),
-        Action::ScrollDown => app.scroll_down(),
+        Action::ScrollUp => {
+            if app.is_showing_features {
+                app.scroll_up_features();
+            } else {
+                app.scroll_up();
+            }
+        }
+        Action::ScrollDown => {
+            if app.is_showing_features {
+                app.scroll_down_features();
+            } else {
+                app.scroll_down();
+            }
+        }
         Action::Quit => app.exit(),
 
         Action::ShowLoadingAddingDeps => {
@@ -88,7 +99,8 @@ pub fn handle_event(tx: UnboundedSender<Action>) -> tokio::task::JoinHandle<()> 
             let action = if crossterm::event::poll(tick_rate).unwrap() {
                 if let crossterm::event::Event::Key(key) = crossterm::event::read().unwrap() {
                     if key.kind == KeyEventKind::Press {
-                        match key.code { KeyCode::Enter => Action::ShowLoadingAddingDeps,
+                        match key.code {
+                            KeyCode::Enter => Action::ShowLoadingAddingDeps,
 
                             KeyCode::Char('q') | KeyCode::Esc => Action::Quit,
                             KeyCode::Tab => Action::ScrollNextCategory,

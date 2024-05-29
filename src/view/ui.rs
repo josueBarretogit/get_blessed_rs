@@ -35,10 +35,10 @@ pub struct AppView {
     is_adding_dependencies: bool,
 
     popup_widget: Popup,
-    list_features_state : ListState,
+    list_features_state: ListState,
     loader_state: throbber_widgets_tui::ThrobberState,
     pub exit: bool,
-    is_showing_features: bool,
+    pub is_showing_features: bool,
 
     categories_list_state: ListState,
     general_crates: Vec<CrateItemList>,
@@ -117,22 +117,15 @@ impl Widget for &mut AppView {
 
         if self.is_showing_features {
             let center = centered_rect(80, 20, area);
-            if let Some(crate_selected) = self.get_current_crate_selected() {
+            let features_popup = FeaturesPopup::new(
+                self.get_current_crate_selected()
+                    .unwrap()
+                    .features
+                    .unwrap_or(vec!["This crate has no features".to_string()]),
+            );
 
-                let features_popup = FeaturesPopup::new(
-                    crate_selected
-                        .features
-                        .unwrap_or(vec!["This crate has no features".to_string()]),
-                );
-
-                Clear.render(center, buf);
-                StatefulWidget::render(
-                    features_popup,
-                    center,
-                    buf,
-                    &mut self.list_features_state,
-                );
-            }
+            Clear.render(center, buf);
+            StatefulWidget::render(features_popup, center, buf, &mut self.list_features_state);
         }
     }
 }
@@ -142,8 +135,10 @@ impl AppView {
         let page_contents = parser;
 
         let mut list_state = ListState::default();
+        let mut feature_list_state = ListState::default();
 
         list_state.select(Some(0));
+        feature_list_state.select(Some(0));
 
         let general_crates = page_contents.get_general_crates();
 
@@ -190,7 +185,7 @@ impl AppView {
             is_showing_features: false,
 
             popup_widget: Popup::default(),
-            list_features_state :  ListState::default()
+            list_features_state: feature_list_state,
         }
     }
 
@@ -418,7 +413,6 @@ impl AppView {
             }
             None => self.crates_list.state.selected().unwrap_or(0),
         };
-
         self.crates_list.state.select(Some(next));
     }
 
@@ -438,6 +432,49 @@ impl AppView {
             None => 1,
         };
         self.crates_list.state.select(Some(next_index));
+    }
+
+    pub fn scroll_up_features(&mut self) {
+        let next_index = match self.list_features_state.selected() {
+            Some(index) => {
+                if index == 0 {
+                    self.get_current_crate_selected()
+                        .unwrap()
+                        .features
+                        .unwrap_or_default()
+                        .len()
+                        .saturating_sub(1)
+                } else {
+                    index.saturating_sub(1)
+                }
+            }
+            None => 1,
+        };
+        self.list_features_state.select(Some(next_index))
+    }
+
+    pub fn scroll_down_features(&mut self) {
+        let next = match self.list_features_state.selected() {
+            Some(index) => {
+                if index
+                    == self
+                        .get_current_crate_selected()
+                        .unwrap()
+                        .features
+                        .unwrap_or_default()
+                        .iter()
+                        .len()
+                        .saturating_sub(1)
+                {
+                    0
+                } else {
+                    index.saturating_add(1)
+                }
+            }
+            None => self.list_features_state.selected().unwrap_or(0),
+        };
+
+        self.list_features_state.select(Some(next))
     }
 
     pub fn toggle_select_all_dependencies(&mut self) {
@@ -614,6 +651,8 @@ impl AppView {
 
     #[inline]
     pub fn toggle_show_features(&mut self) {
-        self.is_showing_features = !self.is_showing_features
+        if self.get_current_crate_selected().is_some() {
+            self.is_showing_features = !self.is_showing_features
+        }
     }
 }
