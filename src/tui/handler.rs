@@ -8,10 +8,11 @@ use tokio::sync::mpsc::{self, UnboundedSender};
 use crate::content_parser::content_parser::JsonContentParser;
 use crate::{dependency_builder::DependenciesBuilder, view::ui::AppView};
 
-#[derive(Clone,  Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Action {
     Tick,
-    FetchFeatures(Vec<String>),
+    FetchFeatures,
+    UpdateFeatures(Vec<String>, usize),
     ToggleShowFeatures,
     ShowLoadingAddingDeps,
     AddingDeps,
@@ -29,18 +30,12 @@ pub enum Action {
 
 pub fn update(app: &mut AppView, action: Action) {
     match action {
-        Action::FetchFeatures(features) => {
-            app.set_features(features);
+        Action::UpdateFeatures(features, index) => {
+            app.update_features_crates(features, index);
+
         }
         Action::ToggleShowFeatures => {
-            let tx = app.action_tx.clone();
             app.toggle_show_features();
-
-            tokio::spawn(async move {
-                let client = crates_io_api::AsyncClient::new("josuebarretogit (josuebarretogit@gmail.com)", Duration::from_millis(500)).unwrap();
-                tx.send(Action::FetchFeatures(vec!["feature 1".to_string()])).unwrap()
-            });
-
         }
         Action::ShowAddingDependenciesOperation => {
             let tx = app.action_tx.clone();
@@ -103,6 +98,7 @@ pub fn update(app: &mut AppView, action: Action) {
         }
 
         Action::Quit => app.exit(),
+        _ => {}
     }
 }
 pub fn handle_event(tx: UnboundedSender<Action>) -> tokio::task::JoinHandle<()> {

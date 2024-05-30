@@ -1,4 +1,4 @@
-#![warn(clippy::pedantic)]
+#![allow(clippy::too_many_lines)]
 use std::{time::Duration, usize};
 use throbber_widgets_tui::ThrobberState;
 use tokio::sync::mpsc::UnboundedSender;
@@ -30,7 +30,7 @@ pub struct AppView {
     pub dependencies_to_add_list: DependenciesList,
     pub crates_list: CratesList,
 
-    category_tabs: CategoriesTabs,
+    pub category_tabs: CategoriesTabs,
 
     is_adding_dependencies: bool,
 
@@ -39,6 +39,8 @@ pub struct AppView {
     loader_state: throbber_widgets_tui::ThrobberState,
     pub exit: bool,
     pub is_showing_features: bool,
+
+    fetch_once: bool,
 
     categories_list_state: ListState,
     general_crates: Vec<CrateItemList>,
@@ -201,6 +203,7 @@ impl AppView {
 
             popup_widget: Popup::default(),
             features: Features::default(),
+            fetch_once: true,
         }
     }
 
@@ -288,30 +291,41 @@ impl AppView {
                     &mut self.crates_list.state,
                 );
 
-                for item in self.general_crates.clone() {
-                    let tx = self.action_tx.clone();
+                if self.fetch_once {
+                    self.fetch_once = false;
+                    for (index, item) in self.general_crates.iter().cloned().enumerate() {
+                        let tx = self.action_tx.clone();
 
-                    let client = crates_io_api::AsyncClient::new(
-                        "josuebarretogit (josuebarretogit@gmail.com)",
-                        Duration::from_millis(500),
-                    )
-                    .unwrap();
-                    tokio::spawn(async move {
-                        let crate_name = item.name.as_str();
-                        let response = client.get_crate(crate_name).await;
-                        match response {
-                            Ok(information) => {
-                                let features : Vec<String> = match information.versions.first() {
-                                    Some(latest) => latest.features.clone().into_keys().collect(),
-                                    None => vec!["This crate has no features".to_string()] 
-                                };
-                                tx.send(Action::FetchFeatures(features));
-                            },
-                            Err(_) => {
-                                tx.send(Action::FetchFeatures(vec!["This crate has no features".to_string()]));
-                            },
-                        };
-                    });
+                        let client = crates_io_api::AsyncClient::new(
+                            "josuebarretogit (josuebarretogit@gmail.com)",
+                            Duration::from_millis(500),
+                        )
+                        .unwrap();
+
+                        tokio::spawn(async move {
+                            let crate_name = item.name.as_str();
+                            let response = client.get_crate(crate_name).await;
+                            match response {
+                                Ok(information) => {
+                                    let features: Vec<String> = match information.versions.first() {
+                                        Some(latest) => {
+                                            latest.features.clone().into_keys().collect()
+                                        }
+                                        None => vec!["This crate has no features".to_string()],
+                                    };
+
+                                    tx.send(Action::UpdateFeatures(features, index)).unwrap();
+                                }
+                                Err(_) => {
+                                    tx.send(Action::UpdateFeatures(
+                                        vec!["This crate has no features".to_string()],
+                                        index,
+                                    ))
+                                    .unwrap();
+                                }
+                            };
+                        });
+                    }
                 }
             }
             CategoriesTabs::Graphics => {
@@ -695,6 +709,13 @@ impl AppView {
     pub fn toggle_show_features(&mut self) {
         if self.get_current_crate_selected().is_some() {
             self.is_showing_features = !self.is_showing_features;
+        }
+    }
+
+    pub fn update_features_crates(&mut self, features: Vec<String>, index: usize) {
+        match self.category_tabs {
+            CategoriesTabs::General => self.general_crates[index].features = Some(features),
+            _ => {}
         }
     }
 }
