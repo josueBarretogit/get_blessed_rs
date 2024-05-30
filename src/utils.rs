@@ -5,23 +5,20 @@ use crate::{
     view::widgets::{CrateItemList, ItemListStatus},
 };
 
-pub fn toggle_status_all(dependencies: &mut Vec<CrateItemList>) {
-    dependencies.iter_mut().for_each(|item| {
+pub fn toggle_status_all(dependencies: &mut [CrateItemList]) {
+    for item in dependencies.iter_mut() {
         item.status = match item.status {
             ItemListStatus::Selected => ItemListStatus::Unselected,
             ItemListStatus::Unselected => ItemListStatus::Selected,
         };
-    });
+    }
 }
 
-pub fn toggle_dependencies_all(
-    crates: &Vec<CrateItemList>,
-    dependencies_added: &mut Vec<CrateToAdd>,
-) {
-    crates.iter().for_each(|item| {
+pub fn toggle_dependencies_all(crates: &[CrateItemList], dependencies_added: &mut Vec<CrateToAdd>) {
+    for item in crates {
         let dependency_to_add = CrateToAdd {
-            crate_name: item.name.to_owned(),
-            features: item.features.to_owned(),
+            crate_name: item.name.clone(),
+            features: item.features.clone(),
         };
         if dependencies_added.contains(&dependency_to_add)
             && item.status == ItemListStatus::Unselected
@@ -30,7 +27,7 @@ pub fn toggle_dependencies_all(
         } else if item.status == ItemListStatus::Selected {
             dependencies_added.push(dependency_to_add);
         }
-    })
+    }
 }
 
 pub fn toggle_one_dependency(

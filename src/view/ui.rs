@@ -1,5 +1,5 @@
 #![warn(clippy::pedantic)]
-use std::usize;
+use std::{time::Duration, usize};
 use throbber_widgets_tui::ThrobberState;
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -21,8 +21,8 @@ use crate::{
 };
 
 use super::widgets::{
-    CategoriesTabs, CrateItemList, CratesListWidget, DependenciesListWidget, FeaturesPopup,
-    FooterInstructions, Popup,
+    CategoriesTabs, CrateItemList, CratesListWidget, DependenciesListWidget, FeatureItemList,
+    FeaturesWidgetList, FooterInstructions, Popup,
 };
 
 pub struct AppView {
@@ -35,7 +35,7 @@ pub struct AppView {
     is_adding_dependencies: bool,
 
     popup_widget: Popup,
-    list_features_state: ListState,
+    features: Features,
     loader_state: throbber_widgets_tui::ThrobberState,
     pub exit: bool,
     pub is_showing_features: bool,
@@ -51,6 +51,12 @@ pub struct AppView {
     database_crates: Vec<CrateItemList>,
     clis_crates: Vec<CrateItemList>,
     graphics_crates: Vec<CrateItemList>,
+}
+
+#[derive(Default)]
+pub struct Features {
+    widget: FeaturesWidgetList,
+    state: ListState,
 }
 
 #[derive(Default)]
@@ -117,15 +123,24 @@ impl Widget for &mut AppView {
 
         if self.is_showing_features {
             let center = centered_rect(80, 20, area);
-            let features_popup = FeaturesPopup::new(
-                self.get_current_crate_selected()
-                    .unwrap()
-                    .features
-                    .unwrap_or(vec!["This crate has no features".to_string()]),
-            );
+            let current_crate_selected = self.get_current_crate_selected().unwrap();
 
+            let features = if current_crate_selected.features.is_some() {
+                Some(
+                    current_crate_selected
+                        .features
+                        .unwrap()
+                        .iter()
+                        .map(|featu| FeatureItemList::new(featu.to_string()))
+                        .collect(),
+                )
+            } else {
+                None
+            };
+
+            let features_popup = FeaturesWidgetList::new(features);
             Clear.render(center, buf);
-            StatefulWidget::render(features_popup, center, buf, &mut self.list_features_state);
+            StatefulWidget::render(features_popup, center, buf, &mut self.features.state);
         }
     }
 }
@@ -185,7 +200,7 @@ impl AppView {
             is_showing_features: false,
 
             popup_widget: Popup::default(),
-            list_features_state: feature_list_state,
+            features: Features::default(),
         }
     }
 
@@ -265,15 +280,43 @@ impl AppView {
         match self.category_tabs {
             CategoriesTabs::General => {
                 self.crates_list.crates_widget_list = CratesListWidget::new(&self.general_crates);
+
                 StatefulWidget::render(
                     self.crates_list.crates_widget_list.clone(),
                     area,
                     buf,
                     &mut self.crates_list.state,
                 );
+
+                for item in self.general_crates.clone() {
+                    let tx = self.action_tx.clone();
+
+                    let client = crates_io_api::AsyncClient::new(
+                        "josuebarretogit (josuebarretogit@gmail.com)",
+                        Duration::from_millis(500),
+                    )
+                    .unwrap();
+                    tokio::spawn(async move {
+                        let crate_name = item.name.as_str();
+                        let response = client.get_crate(crate_name).await;
+                        match response {
+                            Ok(information) => {
+                                let features : Vec<String> = match information.versions.first() {
+                                    Some(latest) => latest.features.clone().into_keys().collect(),
+                                    None => vec!["This crate has no features".to_string()] 
+                                };
+                                tx.send(Action::FetchFeatures(features));
+                            },
+                            Err(_) => {
+                                tx.send(Action::FetchFeatures(vec!["This crate has no features".to_string()]));
+                            },
+                        };
+                    });
+                }
             }
             CategoriesTabs::Graphics => {
                 self.crates_list.crates_widget_list = CratesListWidget::new(&self.graphics_crates);
+
                 StatefulWidget::render(
                     self.crates_list.crates_widget_list.clone(),
                     area,
@@ -435,7 +478,7 @@ impl AppView {
     }
 
     pub fn scroll_up_features(&mut self) {
-        let next_index = match self.list_features_state.selected() {
+        let next_index = match self.features.state.selected() {
             Some(index) => {
                 if index == 0 {
                     self.get_current_crate_selected()
@@ -450,11 +493,11 @@ impl AppView {
             }
             None => 1,
         };
-        self.list_features_state.select(Some(next_index))
+        self.features.state.select(Some(next_index));
     }
 
     pub fn scroll_down_features(&mut self) {
-        let next = match self.list_features_state.selected() {
+        let next = match self.features.state.selected() {
             Some(index) => {
                 if index
                     == self
@@ -471,10 +514,10 @@ impl AppView {
                     index.saturating_add(1)
                 }
             }
-            None => self.list_features_state.selected().unwrap_or(0),
+            None => self.features.state.selected().unwrap_or(0),
         };
 
-        self.list_features_state.select(Some(next))
+        self.features.state.select(Some(next));
     }
 
     pub fn toggle_select_all_dependencies(&mut self) {
@@ -562,8 +605,7 @@ impl AppView {
         self.crates_list
             .state
             .selected()
-            .map(|index| Some(self.crates_list.crates_widget_list.crates[index].clone()))
-            .unwrap_or(None)
+            .map(|index| self.crates_list.crates_widget_list.crates[index].clone())
     }
 
     pub fn toggle_select_dependencie(&mut self) {
@@ -652,7 +694,7 @@ impl AppView {
     #[inline]
     pub fn toggle_show_features(&mut self) {
         if self.get_current_crate_selected().is_some() {
-            self.is_showing_features = !self.is_showing_features
+            self.is_showing_features = !self.is_showing_features;
         }
     }
 }

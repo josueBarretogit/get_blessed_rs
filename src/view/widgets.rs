@@ -12,7 +12,7 @@ use throbber_widgets_tui::{Throbber, ThrobberState};
 
 use crate::dependency_builder::CrateToAdd;
 
-#[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ItemListStatus {
     Selected,
     #[default]
@@ -24,43 +24,73 @@ pub struct Popup {
     pub message: String,
 }
 
+
 #[derive(Debug, Default, Clone)]
-pub struct FeaturesPopup {
-    pub features: Vec<String>,
+pub struct FeatureItemList {
+    name : String,
+    status : ItemListStatus
 }
 
-impl FeaturesPopup{
-    pub fn new(features : Vec<String>) -> Self {
+impl FeatureItemList {
+
+    pub fn new(name : String) -> Self {
+        Self { name, status: ItemListStatus::Unselected }
+    }
+}
+
+impl From<FeatureItemList> for ListItem<'_> {
+    fn from(value: FeatureItemList) -> Self {
+        let (is_selected, bg_color) = match value.status {
+            ItemListStatus::Selected => ("✓", tailwind::BLUE.c300),
+            ItemListStatus::Unselected => ("☐", Color::default()),
+        };
+
+        let line = Line::from(vec![
+            value.name.into(),
+            " ".into(),
+            is_selected.into(),
+        ]);
+
+        ListItem::new(line).style(Style::default().bg(bg_color))
+
+    }
+}
+
+
+#[derive(Debug, Default, Clone)]
+pub struct FeaturesWidgetList {
+    pub features: Option<Vec<FeatureItemList>>,
+}
+
+impl FeaturesWidgetList {
+    pub fn new(features: Option<Vec<FeatureItemList>>) -> Self {
         Self { features }
     }
 }
 
-impl StatefulWidget for FeaturesPopup {
-
+impl StatefulWidget for FeaturesWidgetList {
     type State = ListState;
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-
         Block::bordered().title("").render(area, buf);
 
         let inner_area = area.inner(&Margin {
             vertical: 1,
             horizontal: 1,
         });
+        let features = if self.features.is_some() {
+            self.features.unwrap()
+        } else {
+            vec![FeatureItemList::new("Fetching features".to_string())]
+        };
 
-        let features_list = List::new(self.features)
-            
+        let features_list = List::new(features)
             .highlight_style(Style::default().blue())
             .highlight_symbol("* ")
             .direction(ListDirection::TopToBottom);
 
-
         StatefulWidget::render(features_list, inner_area, buf, state);
-        
     }
-    
 }
-
-
 
 impl StatefulWidget for Popup {
     type State = ThrobberState;
@@ -175,7 +205,7 @@ impl From<CrateItemList> for ListItem<'_> {
 impl StatefulWidget for CratesListWidget {
     type State = ListState;
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let block = Block::default().padding(Padding::uniform(1));
+        let block = Block::bordered().padding(Padding::uniform(1));
 
         let list = List::new(self.crates)
             .block(block)
