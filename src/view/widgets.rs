@@ -71,21 +71,23 @@ impl FeaturesWidgetList {
 impl StatefulWidget for FeaturesWidgetList {
     type State = ListState;
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        Block::bordered().title("").render(area, buf);
+
+        Block::bordered().title("Features").render(area, buf);
 
         let inner_area = area.inner(&Margin {
             vertical: 1,
             horizontal: 1,
         });
+
         let features = if self.features.is_some() {
             self.features.unwrap()
         } else {
-            vec![FeatureItemList::new("Fetching features".to_string())]
+            vec![FeatureItemList::new("Fetching features, please wait a moment".to_string())]
         };
 
         let features_list = List::new(features)
             .highlight_style(Style::default().blue())
-            .highlight_symbol("* ")
+            .highlight_symbol(">> ")
             .direction(ListDirection::TopToBottom);
 
         StatefulWidget::render(features_list, inner_area, buf, state);
@@ -118,7 +120,7 @@ impl StatefulWidget for Popup {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct CrateItemList {
     pub name: String,
     pub description: String,
@@ -205,7 +207,7 @@ impl From<CrateItemList> for ListItem<'_> {
 impl StatefulWidget for CratesListWidget {
     type State = ListState;
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let block = Block::bordered().padding(Padding::uniform(1));
+        let block = Block::default().padding(Padding::uniform(1));
 
         let list = List::new(self.crates)
             .block(block)
@@ -226,7 +228,7 @@ impl CratesListWidget {
     }
 }
 
-#[derive(Default, Clone, Copy, Display, FromRepr, EnumIter)]
+#[derive(Default, Clone, Copy, Display, FromRepr, EnumIter,  PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum CategoriesTabs {
     #[strum(to_string = "General")]
     #[default]

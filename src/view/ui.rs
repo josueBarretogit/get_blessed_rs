@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_lines)]
-use std::{time::Duration, usize};
+use std::{thread::spawn, time::Duration, usize};
 use throbber_widgets_tui::ThrobberState;
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use ratatui::{
     prelude::*,
@@ -40,19 +40,17 @@ pub struct AppView {
     pub exit: bool,
     pub is_showing_features: bool,
 
-    fetch_once: bool,
-
-    categories_list_state: ListState,
-    general_crates: Vec<CrateItemList>,
-    math_crates: Vec<CrateItemList>,
-    ffi_crates: Vec<CrateItemList>,
-    cryptography_crates: Vec<CrateItemList>,
-    common_crates: Vec<CrateItemList>,
-    concurrency_crates: Vec<CrateItemList>,
-    networking_crates: Vec<CrateItemList>,
-    database_crates: Vec<CrateItemList>,
-    clis_crates: Vec<CrateItemList>,
-    graphics_crates: Vec<CrateItemList>,
+    pub categories_list_state: ListState,
+    pub general_crates: Vec<CrateItemList>,
+    pub math_crates: Vec<CrateItemList>,
+    pub ffi_crates: Vec<CrateItemList>,
+    pub cryptography_crates: Vec<CrateItemList>,
+    pub common_crates: Vec<CrateItemList>,
+    pub concurrency_crates: Vec<CrateItemList>,
+    pub networking_crates: Vec<CrateItemList>,
+    pub database_crates: Vec<CrateItemList>,
+    pub clis_crates: Vec<CrateItemList>,
+    pub graphics_crates: Vec<CrateItemList>,
 }
 
 #[derive(Default)]
@@ -157,22 +155,31 @@ impl AppView {
         list_state.select(Some(0));
         feature_list_state.select(Some(0));
 
-        let general_crates = page_contents.get_general_crates();
+        let general_crates: Vec<CrateItemList> = page_contents.get_general_crates().into();
 
-        let math_crates = page_contents.get_crates(&Categories::Math);
-        let ffi_crates = page_contents.get_crates(&Categories::FFI);
-        let cryptography_crates = page_contents.get_crates(&Categories::Cryptography);
+        let math_crates: Vec<CrateItemList> = page_contents.get_crates(&Categories::Math).into();
+        let ffi_crates: Vec<CrateItemList> = page_contents.get_crates(&Categories::FFI).into();
+        let cryptography_crates: Vec<CrateItemList> =
+            page_contents.get_crates(&Categories::Cryptography).into();
 
-        let common_crates = page_contents.get_crates_with_sub(&CategoriesWithSubCategories::Common);
-        let concurrency_crates =
-            page_contents.get_crates_with_sub(&CategoriesWithSubCategories::Concurrency);
-        let networking_crates =
-            page_contents.get_crates_with_sub(&CategoriesWithSubCategories::Networking);
-        let database_crates =
-            page_contents.get_crates_with_sub(&CategoriesWithSubCategories::Databases);
-        let clis_crates = page_contents.get_crates_with_sub(&CategoriesWithSubCategories::Clis);
-        let graphics_crates =
-            page_contents.get_crates_with_sub(&CategoriesWithSubCategories::Graphics);
+        let common_crates: Vec<CrateItemList> = page_contents
+            .get_crates_with_sub(&CategoriesWithSubCategories::Common)
+            .into();
+        let concurrency_crates: Vec<CrateItemList> = page_contents
+            .get_crates_with_sub(&CategoriesWithSubCategories::Concurrency)
+            .into();
+        let networking_crates: Vec<CrateItemList> = page_contents
+            .get_crates_with_sub(&CategoriesWithSubCategories::Networking)
+            .into();
+        let database_crates: Vec<CrateItemList> = page_contents
+            .get_crates_with_sub(&CategoriesWithSubCategories::Databases)
+            .into();
+        let clis_crates: Vec<CrateItemList> = page_contents
+            .get_crates_with_sub(&CategoriesWithSubCategories::Clis)
+            .into();
+        let graphics_crates: Vec<CrateItemList> = page_contents
+            .get_crates_with_sub(&CategoriesWithSubCategories::Graphics)
+            .into();
 
         Self {
             action_tx,
@@ -182,19 +189,17 @@ impl AppView {
             is_adding_dependencies: false,
             loader_state: ThrobberState::default(),
 
-            general_crates: general_crates.into(),
+            general_crates,
 
-            math_crates: math_crates.into(),
-            ffi_crates: ffi_crates.into(),
-
-            cryptography_crates: cryptography_crates.into(),
-
-            common_crates: common_crates.into(),
-            concurrency_crates: concurrency_crates.into(),
-            networking_crates: networking_crates.into(),
-            database_crates: database_crates.into(),
-            clis_crates: clis_crates.into(),
-            graphics_crates: graphics_crates.into(),
+            math_crates,
+            ffi_crates,
+            cryptography_crates,
+            common_crates,
+            concurrency_crates,
+            networking_crates,
+            database_crates,
+            clis_crates,
+            graphics_crates,
 
             categories_list_state: list_state,
 
@@ -203,7 +208,6 @@ impl AppView {
 
             popup_widget: Popup::default(),
             features: Features::default(),
-            fetch_once: true,
         }
     }
 
@@ -282,6 +286,7 @@ impl AppView {
     fn render_crates_list(&mut self, area: Rect, buf: &mut Buffer) {
         match self.category_tabs {
             CategoriesTabs::General => {
+
                 self.crates_list.crates_widget_list = CratesListWidget::new(&self.general_crates);
 
                 StatefulWidget::render(
@@ -290,43 +295,6 @@ impl AppView {
                     buf,
                     &mut self.crates_list.state,
                 );
-
-                if self.fetch_once {
-                    self.fetch_once = false;
-                    for (index, item) in self.general_crates.iter().cloned().enumerate() {
-                        let tx = self.action_tx.clone();
-
-                        let client = crates_io_api::AsyncClient::new(
-                            "josuebarretogit (josuebarretogit@gmail.com)",
-                            Duration::from_millis(500),
-                        )
-                        .unwrap();
-
-                        tokio::spawn(async move {
-                            let crate_name = item.name.as_str();
-                            let response = client.get_crate(crate_name).await;
-                            match response {
-                                Ok(information) => {
-                                    let features: Vec<String> = match information.versions.first() {
-                                        Some(latest) => {
-                                            latest.features.clone().into_keys().collect()
-                                        }
-                                        None => vec!["This crate has no features".to_string()],
-                                    };
-
-                                    tx.send(Action::UpdateFeatures(features, index)).unwrap();
-                                }
-                                Err(_) => {
-                                    tx.send(Action::UpdateFeatures(
-                                        vec!["This crate has no features".to_string()],
-                                        index,
-                                    ))
-                                    .unwrap();
-                                }
-                            };
-                        });
-                    }
-                }
             }
             CategoriesTabs::Graphics => {
                 self.crates_list.crates_widget_list = CratesListWidget::new(&self.graphics_crates);
@@ -709,13 +677,6 @@ impl AppView {
     pub fn toggle_show_features(&mut self) {
         if self.get_current_crate_selected().is_some() {
             self.is_showing_features = !self.is_showing_features;
-        }
-    }
-
-    pub fn update_features_crates(&mut self, features: Vec<String>, index: usize) {
-        match self.category_tabs {
-            CategoriesTabs::General => self.general_crates[index].features = Some(features),
-            _ => {}
         }
     }
 }

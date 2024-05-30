@@ -6,13 +6,14 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
 use crate::content_parser::content_parser::JsonContentParser;
+use crate::view::widgets::{CategoriesTabs, CrateItemList};
 use crate::{dependency_builder::DependenciesBuilder, view::ui::AppView};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Action {
+    FetchFeatures(CategoriesTabs),
+    UpdateFeatures(CategoriesTabs, Vec<CrateItemList>),
     Tick,
-    FetchFeatures,
-    UpdateFeatures(Vec<String>, usize),
     ToggleShowFeatures,
     ShowLoadingAddingDeps,
     AddingDeps,
@@ -30,10 +31,6 @@ pub enum Action {
 
 pub fn update(app: &mut AppView, action: Action) {
     match action {
-        Action::UpdateFeatures(features, index) => {
-            app.update_features_crates(features, index);
-
-        }
         Action::ToggleShowFeatures => {
             app.toggle_show_features();
         }
@@ -96,9 +93,73 @@ pub fn update(app: &mut AppView, action: Action) {
                 }
             });
         }
+        Action::FetchFeatures(category) => {
+            let client = crates_io_api::AsyncClient::new(
+                "josuebarretogit (josuebarretogit@gmail.com)",
+                Duration::from_millis(500),
+            )
+            .unwrap();
+            match category {
+                CategoriesTabs::General => {
+                    let mut general_crates = app.general_crates.clone();
+                    let tx = app.action_tx.clone();
+                    tokio::spawn(async move {
+                        for crateitem in general_crates.iter_mut() {
+                            let crate_name = crateitem.name.as_str();
+                            let response = client.get_crate(crate_name).await;
+
+                            if let Ok(information) = response {
+                                let features: Vec<String> = match information.versions.first() {
+                                    Some(latest) => latest.features.clone().into_keys().collect(),
+                                    None => vec!["This crate has no features".to_string()],
+                                };
+
+                                crateitem.features = Some(features);
+                            };
+                        }
+                        tx.send(Action::UpdateFeatures(
+                            CategoriesTabs::General,
+                            general_crates,
+                        ))
+                        .unwrap();
+                    });
+                }
+                CategoriesTabs::Common => {
+                    let mut common_crates = app.common_crates.clone();
+                    let tx = app.action_tx.clone();
+                    tokio::spawn(async move {
+                        for crateitem in common_crates.iter_mut() {
+                            let crate_name = crateitem.name.as_str();
+                            let response = client.get_crate(crate_name).await;
+
+                            if let Ok(information) = response {
+                                let features: Vec<String> = match information.versions.first() {
+                                    Some(latest) => latest.features.clone().into_keys().collect(),
+                                    None => vec!["This crate has no features".to_string()],
+                                };
+
+                                crateitem.features = Some(features);
+                            };
+                        }
+                        tx.send(Action::UpdateFeatures(
+                            CategoriesTabs::Common,
+                            common_crates,
+                        ))
+                        .unwrap();
+                    });
+                }
+                _ => {}
+            }
+
+        }
+
+        Action::UpdateFeatures(category, items) => match category {
+            CategoriesTabs::General => app.general_crates = items,
+            CategoriesTabs::Common => app.common_crates = items,
+            _ => {}
+        },
 
         Action::Quit => app.exit(),
-        _ => {}
     }
 }
 pub fn handle_event(tx: UnboundedSender<Action>) -> tokio::task::JoinHandle<()> {
@@ -123,7 +184,6 @@ pub fn handle_event(tx: UnboundedSender<Action>) -> tokio::task::JoinHandle<()> 
                             KeyCode::Char('d') => Action::CheckDocs,
                             KeyCode::Char('c') => Action::CheckCratesIo,
                             KeyCode::Char('f') => Action::ToggleShowFeatures,
-
                             _ => Action::Tick,
                         }
                     } else {
@@ -151,6 +211,15 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
     let json_parser = JsonContentParser::parse_content().await;
 
     let mut app = AppView::setup(action_tx.clone(), &json_parser);
+
+    std::thread::spawn(move || {
+        action_tx
+            .send(Action::FetchFeatures(CategoriesTabs::General))
+            .unwrap();
+        action_tx
+            .send(Action::FetchFeatures(CategoriesTabs::Common))
+            .unwrap();
+    });
 
     let task = handle_event(app.action_tx.clone());
 
