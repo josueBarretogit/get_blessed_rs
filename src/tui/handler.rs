@@ -1,6 +1,8 @@
-use core::panic;
+use core::{alloc, panic};
+use std::sync::Arc;
 use std::{error::Error, time::Duration};
 
+use crates_io_api::CratesQueryBuilder;
 use crossterm::event::{KeyCode, KeyEventKind};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc::{self, UnboundedSender};
@@ -11,7 +13,7 @@ use crate::{dependency_builder::DependenciesBuilder, view::ui::AppView};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Action {
-    FetchFeatures(CategoriesTabs),
+    FetchFeatures,
     UpdateFeatures(CategoriesTabs, Vec<CrateItemList>),
     Tick,
     ToggleShowFeatures,
@@ -29,6 +31,7 @@ pub enum Action {
     Quit,
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn update(app: &mut AppView, action: Action) {
     match action {
         Action::ToggleShowFeatures => {
@@ -85,7 +88,7 @@ pub fn update(app: &mut AppView, action: Action) {
 
             tokio::spawn(async move {
                 match deps_builder.add_dependencies() {
-                    Ok(_) => {
+                    Ok(()) => {
                         tx.send(Action::ShowAddingDependenciesOperation).unwrap();
                     }
                     Err(e) => panic!("An Error ocurred, please report it on github: https://github.com/josueBarretogit/get_blessed_rs \n
@@ -93,70 +96,95 @@ pub fn update(app: &mut AppView, action: Action) {
                 }
             });
         }
-        Action::FetchFeatures(category) => {
-            let client = crates_io_api::AsyncClient::new(
-                "josuebarretogit (josuebarretogit@gmail.com)",
-                Duration::from_millis(500),
-            )
-            .unwrap();
-            match category {
-                CategoriesTabs::General => {
-                    let mut general_crates = app.general_crates.clone();
-                    let tx = app.action_tx.clone();
-                    tokio::spawn(async move {
-                        for crateitem in general_crates.iter_mut() {
-                            let crate_name = crateitem.name.as_str();
-                            let response = client.get_crate(crate_name).await;
+        Action::FetchFeatures => {
+            let client = Arc::new(
+                crates_io_api::AsyncClient::new(
+                    "josuebarretogit (josuebarretogit@gmail.com)",
+                    Duration::from_millis(100),
+                )
+                .unwrap(),
+            );
 
-                            if let Ok(information) = response {
-                                let features: Vec<String> = match information.versions.first() {
-                                    Some(latest) => latest.features.clone().into_keys().collect(),
-                                    None => vec!["This crate has no features".to_string()],
-                                };
+            fetch_features(
+                app.general_crates.clone(),
+                app.action_tx.clone(),
+                Arc::clone(&client),
+                CategoriesTabs::General,
+            );
 
-                                crateitem.features = Some(features);
-                            };
-                        }
-                        tx.send(Action::UpdateFeatures(
-                            CategoriesTabs::General,
-                            general_crates,
-                        ))
-                        .unwrap();
-                    });
-                }
-                CategoriesTabs::Common => {
-                    let mut common_crates = app.common_crates.clone();
-                    let tx = app.action_tx.clone();
-                    tokio::spawn(async move {
-                        for crateitem in common_crates.iter_mut() {
-                            let crate_name = crateitem.name.as_str();
-                            let response = client.get_crate(crate_name).await;
+            fetch_features(
+                app.common_crates.clone(),
+                app.action_tx.clone(),
+                Arc::clone(&client),
+                CategoriesTabs::Common,
+            );
 
-                            if let Ok(information) = response {
-                                let features: Vec<String> = match information.versions.first() {
-                                    Some(latest) => latest.features.clone().into_keys().collect(),
-                                    None => vec!["This crate has no features".to_string()],
-                                };
+            fetch_features(
+                app.math_crates.clone(),
+                app.action_tx.clone(),
+                Arc::clone(&client),
+                CategoriesTabs::Math,
+            );
 
-                                crateitem.features = Some(features);
-                            };
-                        }
-                        tx.send(Action::UpdateFeatures(
-                            CategoriesTabs::Common,
-                            common_crates,
-                        ))
-                        .unwrap();
-                    });
-                }
-                _ => {}
-            }
+            fetch_features(
+                app.ffi_crates.clone(),
+                app.action_tx.clone(),
+                Arc::clone(&client),
+                CategoriesTabs::FFI,
+            );
+
+            fetch_features(
+                app.clis_crates.clone(),
+                app.action_tx.clone(),
+                Arc::clone(&client),
+                CategoriesTabs::Clis,
+            );
+
+
+            fetch_features(
+                app.graphics_crates.clone(),
+                app.action_tx.clone(),
+                Arc::clone(&client),
+                CategoriesTabs::Graphics,
+            );
+
+
+            fetch_features(
+                app.database_crates.clone(),
+                app.action_tx.clone(),
+                Arc::clone(&client),
+                CategoriesTabs::Databases,
+            );
+
+
+            fetch_features(
+                app.networking_crates.clone(),
+                app.action_tx.clone(),
+                Arc::clone(&client),
+                CategoriesTabs::Networking,
+            );
+
+
+            fetch_features(
+                app.concurrency_crates.clone(),
+                app.action_tx.clone(),
+                Arc::clone(&client),
+                CategoriesTabs::Concurrency,
+            );
 
         }
 
         Action::UpdateFeatures(category, items) => match category {
             CategoriesTabs::General => app.general_crates = items,
             CategoriesTabs::Common => app.common_crates = items,
-            _ => {}
+            CategoriesTabs::Math => app.math_crates = items,
+            CategoriesTabs::FFI => app.ffi_crates = items,
+            CategoriesTabs::Clis => app.clis_crates = items,
+            CategoriesTabs::Graphics => app.graphics_crates = items, 
+            CategoriesTabs::Databases => app.database_crates = items, 
+            CategoriesTabs::Networking => app.networking_crates = items,
+            CategoriesTabs::Concurrency => app.concurrency_crates = items,
+            CategoriesTabs::Cryptography => app.cryptography_crates = items,
         },
 
         Action::Quit => app.exit(),
@@ -212,16 +240,9 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
 
     let mut app = AppView::setup(action_tx.clone(), &json_parser);
 
-    std::thread::spawn(move || {
-        action_tx
-            .send(Action::FetchFeatures(CategoriesTabs::General))
-            .unwrap();
-        action_tx
-            .send(Action::FetchFeatures(CategoriesTabs::Common))
-            .unwrap();
-    });
-
     let task = handle_event(app.action_tx.clone());
+
+    action_tx.send(Action::FetchFeatures).unwrap();
 
     loop {
         terminal.draw(|f| {
@@ -241,4 +262,31 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
     task.abort();
 
     Ok(())
+}
+
+fn fetch_features(
+    crates: Vec<CrateItemList>,
+    tx: UnboundedSender<Action>,
+    client: Arc<crates_io_api::AsyncClient>,
+    category: CategoriesTabs,
+) {
+    let mut crates_with_features = crates;
+    tokio::spawn(async move {
+        for crateitem in &mut crates_with_features {
+            let crate_name = crateitem.name.as_str();
+            let response = client.get_crate(crate_name).await;
+
+            if let Ok(information) = response {
+                match information.versions.first() {
+                    Some(latest) => {
+                        crateitem.features = Some(latest.features.clone().into_keys().collect());
+                    }
+                    None => crateitem.features = None,
+                };
+            };
+        }
+
+        tx.send(Action::UpdateFeatures(category, crates_with_features))
+            .unwrap();
+    });
 }
