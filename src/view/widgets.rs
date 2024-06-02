@@ -24,10 +24,10 @@ pub struct Popup {
     pub message: String,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FeatureItemList {
-    name: String,
-    status: ItemListStatus,
+    pub name: String,
+    pub status: ItemListStatus,
 }
 
 impl FeatureItemList {
@@ -132,8 +132,9 @@ impl StatefulWidget for Popup {
 pub struct CrateItemList {
     pub name: String,
     pub description: String,
-    pub features: Option<Vec<String>>,
+    pub features: Option<Vec<FeatureItemList>>,
     pub status: ItemListStatus,
+    pub is_loading: bool,
 }
 
 #[derive(Clone, Default)]
@@ -177,13 +178,14 @@ impl CrateItemList {
         name: String,
         description: String,
         status: ItemListStatus,
-        features: Option<Vec<String>>,
+        features: Option<Vec<FeatureItemList>>,
     ) -> Self {
         Self {
             name,
             description,
             features,
             status,
+            is_loading : true,
         }
     }
 }

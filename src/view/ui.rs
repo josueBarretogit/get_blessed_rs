@@ -8,7 +8,7 @@ use ratatui::{
     symbols::border,
     widgets::{
         block::{Block, Position, Title},
-        Clear, ListState,
+        Clear, ListState, Paragraph,
     },
 };
 
@@ -656,6 +656,7 @@ impl AppView {
     #[inline]
     pub fn toggle_show_features(&mut self) {
         if self.get_current_crate_selected().is_some() {
+            self.features.state.select(Some(0));
             self.is_showing_features = !self.is_showing_features;
         }
     }
@@ -666,31 +667,26 @@ impl AppView {
         let center = centered_rect(80, 40, area);
         let (current_crate_selected, index_current_crate_selected) =
             self.get_current_crate_selected().unwrap();
-        let features = if current_crate_selected.features.is_some() {
-            Some(
-                current_crate_selected
-                    .features
-                    .unwrap()
-                    .iter()
-                    .map(|featu| FeatureItemList::new(featu.to_string()))
-                    .collect(),
-            )
-        } else {
-            None
-        };
 
         self.features.widget = FeaturesWidgetList::new(
             index_current_crate_selected,
             current_crate_selected.name,
-            features,
+            current_crate_selected.features,
         );
 
         Clear.render(center, buf);
-        StatefulWidget::render(
-            self.features.widget.clone(),
-            center,
-            buf,
-            &mut self.features.state,
-        );
+
+        if current_crate_selected.is_loading {
+            Paragraph::new("Fetching features, please wait a moment")
+                .block(Block::bordered().title(self.features.widget.crate_name.clone()))
+                .render(center, buf);
+        } else {
+            StatefulWidget::render(
+                self.features.widget.clone(),
+                center,
+                buf,
+                &mut self.features.state,
+            );
+        }
     }
 }

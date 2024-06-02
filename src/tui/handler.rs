@@ -7,13 +7,13 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
 use crate::content_parser::content_parser::JsonContentParser;
-use crate::view::widgets::{CategoriesTabs, CrateItemList};
+use crate::view::widgets::{CategoriesTabs, CrateItemList, FeatureItemList};
 use crate::{dependency_builder::DependenciesBuilder, view::ui::AppView};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Action {
     FetchFeatures,
-    UpdateFeatures(CategoriesTabs, Vec<String>, usize),
+    UpdateFeatures(CategoriesTabs, Vec<FeatureItemList>, usize),
     Tick,
     ToggleShowFeatures,
     ShowLoadingAddingDeps,
@@ -192,34 +192,44 @@ pub fn update(app: &mut AppView, action: Action) {
         Action::UpdateFeatures(category, features, crate_index_to_update) => match category {
             CategoriesTabs::General => {
                 app.general_crates[crate_index_to_update].features = Some(features);
+                app.general_crates[crate_index_to_update].is_loading = false;
             }
             CategoriesTabs::Common => {
                 app.common_crates[crate_index_to_update].features = Some(features);
+                app.common_crates[crate_index_to_update].is_loading = false;
             }
             CategoriesTabs::FFI => {
                 app.ffi_crates[crate_index_to_update].features = Some(features);
+                app.ffi_crates[crate_index_to_update].is_loading = false;
             }
             CategoriesTabs::Math => {
                 app.math_crates[crate_index_to_update].features = Some(features);
+                app.math_crates[crate_index_to_update].is_loading = false;
             }
             CategoriesTabs::Clis => {
                 app.clis_crates[crate_index_to_update].features = Some(features);
+                app.clis_crates[crate_index_to_update].is_loading = false;
             }
             CategoriesTabs::Graphics => {
                 app.graphics_crates[crate_index_to_update].features = Some(features);
+                app.graphics_crates[crate_index_to_update].is_loading = false;
             }
             CategoriesTabs::Databases => {
                 app.database_crates[crate_index_to_update].features = Some(features);
+                app.database_crates[crate_index_to_update].is_loading = false;
             }
             CategoriesTabs::Networking => {
                 app.networking_crates[crate_index_to_update].features = Some(features);
+                app.networking_crates[crate_index_to_update].is_loading = false;
             }
 
             CategoriesTabs::Concurrency => {
                 app.concurrency_crates[crate_index_to_update].features = Some(features);
+                app.concurrency_crates[crate_index_to_update].is_loading = false;
             }
             CategoriesTabs::Cryptography => {
                 app.cryptography_crates[crate_index_to_update].features = Some(features);
+                app.cryptography_crates[crate_index_to_update].is_loading = false;
             }
         },
 
@@ -316,7 +326,7 @@ fn fetch_features(
                 if let Some(latest) = information.versions.first() {
                     tx.send(Action::UpdateFeatures(
                         category,
-                        latest.features.clone().into_keys().collect(),
+                        latest.features.clone().into_keys().map(|feat| FeatureItemList::new(feat)).collect(),
                         index,
                     ))
                     .unwrap();
