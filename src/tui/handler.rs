@@ -2,7 +2,6 @@ use core::{alloc, panic};
 use std::sync::Arc;
 use std::{error::Error, time::Duration};
 
-use crates_io_api::CratesQueryBuilder;
 use crossterm::event::{KeyCode, KeyEventKind};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc::{self, UnboundedSender};
@@ -14,7 +13,7 @@ use crate::{dependency_builder::DependenciesBuilder, view::ui::AppView};
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Action {
     FetchFeatures,
-    UpdateFeatures(CategoriesTabs, Vec<CrateItemList>),
+    UpdateFeatures(CategoriesTabs, Vec<String>, usize),
     Tick,
     ToggleShowFeatures,
     ShowLoadingAddingDeps,
@@ -106,85 +105,108 @@ pub fn update(app: &mut AppView, action: Action) {
             );
 
             fetch_features(
-                app.general_crates.clone(),
-                app.action_tx.clone(),
-                Arc::clone(&client),
+                &app.general_crates,
+                &app.action_tx,
+                &client,
                 CategoriesTabs::General,
             );
 
             fetch_features(
-                app.common_crates.clone(),
-                app.action_tx.clone(),
-                Arc::clone(&client),
+                &app.common_crates,
+                &app.action_tx,
+                &client,
                 CategoriesTabs::Common,
             );
 
             fetch_features(
-                app.math_crates.clone(),
-                app.action_tx.clone(),
-                Arc::clone(&client),
-                CategoriesTabs::Math,
-            );
-
-            fetch_features(
-                app.ffi_crates.clone(),
-                app.action_tx.clone(),
-                Arc::clone(&client),
+                &app.ffi_crates,
+                &app.action_tx,
+                &client,
                 CategoriesTabs::FFI,
             );
 
             fetch_features(
-                app.clis_crates.clone(),
-                app.action_tx.clone(),
-                Arc::clone(&client),
+                &app.math_crates,
+                &app.action_tx,
+                &client,
+                CategoriesTabs::Math,
+            );
+
+            fetch_features(
+                &app.clis_crates,
+                &app.action_tx,
+                &client,
                 CategoriesTabs::Clis,
             );
 
-
             fetch_features(
-                app.graphics_crates.clone(),
-                app.action_tx.clone(),
-                Arc::clone(&client),
+                &app.graphics_crates,
+                &app.action_tx,
+                &client,
                 CategoriesTabs::Graphics,
             );
 
-
             fetch_features(
-                app.database_crates.clone(),
-                app.action_tx.clone(),
-                Arc::clone(&client),
-                CategoriesTabs::Databases,
-            );
-
-
-            fetch_features(
-                app.networking_crates.clone(),
-                app.action_tx.clone(),
-                Arc::clone(&client),
+                &app.networking_crates,
+                &app.action_tx,
+                &client,
                 CategoriesTabs::Networking,
             );
 
-
             fetch_features(
-                app.concurrency_crates.clone(),
-                app.action_tx.clone(),
-                Arc::clone(&client),
-                CategoriesTabs::Concurrency,
+                &app.database_crates,
+                &app.action_tx,
+                &client,
+                CategoriesTabs::Databases,
             );
 
+            fetch_features(
+                &app.cryptography_crates,
+                &app.action_tx,
+                &client,
+                CategoriesTabs::Cryptography,
+            );
+
+            fetch_features(
+                &app.concurrency_crates,
+                &app.action_tx,
+                &client,
+                CategoriesTabs::Concurrency,
+            );
         }
 
-        Action::UpdateFeatures(category, items) => match category {
-            CategoriesTabs::General => app.general_crates = items,
-            CategoriesTabs::Common => app.common_crates = items,
-            CategoriesTabs::Math => app.math_crates = items,
-            CategoriesTabs::FFI => app.ffi_crates = items,
-            CategoriesTabs::Clis => app.clis_crates = items,
-            CategoriesTabs::Graphics => app.graphics_crates = items, 
-            CategoriesTabs::Databases => app.database_crates = items, 
-            CategoriesTabs::Networking => app.networking_crates = items,
-            CategoriesTabs::Concurrency => app.concurrency_crates = items,
-            CategoriesTabs::Cryptography => app.cryptography_crates = items,
+        Action::UpdateFeatures(category, features, crate_index_to_update) => match category {
+            CategoriesTabs::General => {
+                app.general_crates[crate_index_to_update].features = Some(features);
+            }
+            CategoriesTabs::Common => {
+                app.common_crates[crate_index_to_update].features = Some(features);
+            }
+            CategoriesTabs::FFI => {
+                app.ffi_crates[crate_index_to_update].features = Some(features);
+            }
+            CategoriesTabs::Math => {
+                app.math_crates[crate_index_to_update].features = Some(features);
+            }
+            CategoriesTabs::Clis => {
+                app.clis_crates[crate_index_to_update].features = Some(features);
+            }
+            CategoriesTabs::Graphics => {
+                app.graphics_crates[crate_index_to_update].features = Some(features);
+            }
+            CategoriesTabs::Databases => {
+                app.database_crates[crate_index_to_update].features = Some(features);
+            }
+            CategoriesTabs::Networking => {
+                app.networking_crates[crate_index_to_update].features = Some(features);
+            }
+
+            CategoriesTabs::Concurrency => {
+                app.concurrency_crates[crate_index_to_update].features = Some(features);
+            }
+            CategoriesTabs::Cryptography => {
+                app.cryptography_crates[crate_index_to_update].features = Some(features);
+            }
         },
 
         Action::Quit => app.exit(),
@@ -265,28 +287,27 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
 }
 
 fn fetch_features(
-    crates: Vec<CrateItemList>,
-    tx: UnboundedSender<Action>,
-    client: Arc<crates_io_api::AsyncClient>,
+    crates: &[CrateItemList],
+    tx: &UnboundedSender<Action>,
+    client: &Arc<crates_io_api::AsyncClient>,
     category: CategoriesTabs,
 ) {
-    let mut crates_with_features = crates;
-    tokio::spawn(async move {
-        for crateitem in &mut crates_with_features {
-            let crate_name = crateitem.name.as_str();
-            let response = client.get_crate(crate_name).await;
-
+    for (index, crateitem) in crates.iter().enumerate() {
+        let crate_name = crateitem.name.clone();
+        let tx = tx.clone();
+        let client = Arc::clone(client);
+        tokio::spawn(async move {
+            let response = client.get_crate(&crate_name).await;
             if let Ok(information) = response {
-                match information.versions.first() {
-                    Some(latest) => {
-                        crateitem.features = Some(latest.features.clone().into_keys().collect());
-                    }
-                    None => crateitem.features = None,
+                if let Some(latest) = information.versions.first() {
+                    tx.send(Action::UpdateFeatures(
+                        category,
+                        latest.features.clone().into_keys().collect(),
+                        index,
+                    ))
+                    .unwrap();
                 };
             };
-        }
-
-        tx.send(Action::UpdateFeatures(category, crates_with_features))
-            .unwrap();
-    });
+        });
+    }
 }
