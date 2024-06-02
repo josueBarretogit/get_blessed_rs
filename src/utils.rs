@@ -54,6 +54,10 @@ pub fn toggle_one_feature(current_crate: &mut CrateItemList, features_list_state
         .selected()
         .zip(current_crate.features.as_mut())
     {
+        if current_crate_features.is_empty() {
+            return
+        }
+
         let current_feature_selected = &mut current_crate_features[index];
 
         match current_feature_selected.status {

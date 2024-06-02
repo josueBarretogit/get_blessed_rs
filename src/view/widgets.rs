@@ -78,6 +78,16 @@ impl StatefulWidget for FeaturesWidgetList {
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         Block::bordered()
             .title(format!("Features of crate: {}", self.crate_name))
+            .title_bottom(Line::from(vec![
+                "Toggle select ".into(),
+                "<s> ".bold().blue(),
+                "Move down ".into(),
+                "<Down> <j> ".bold().blue(),
+                "Move up ".into(),
+                "<Up> <k> ".bold().blue(),
+                "Close ".into(),
+                "<f>".bold().blue(),
+            ]))
             .render(area, buf);
 
         let inner_area = area.inner(&Margin {
@@ -185,7 +195,7 @@ impl CrateItemList {
             description,
             features,
             status,
-            is_loading : true,
+            is_loading: true,
         }
     }
 }

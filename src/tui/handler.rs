@@ -59,7 +59,7 @@ pub fn update(app: &mut AppView, action: Action) {
             }
         }
         Action::ToggleOne => {
-            if app.is_showing_features {
+            if app.is_showing_features  {
                 app.toggle_select_one_feature();
             } else {
                 app.toggle_select_dependencie();

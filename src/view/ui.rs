@@ -1,6 +1,6 @@
 #![allow(clippy::too_many_lines)]
 use std::{thread::spawn, time::Duration, usize};
-use throbber_widgets_tui::ThrobberState;
+use throbber_widgets_tui::{symbols::throbber, Throbber, ThrobberState};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use ratatui::{
@@ -248,6 +248,8 @@ impl AppView {
             "<d> ".blue(),
             "Check crates.io ".into(),
             "<c> ".blue(),
+            "Select features ".into(),
+            "<f> ".blue(),
         ]));
 
         Block::bordered()
@@ -665,58 +667,57 @@ impl AppView {
     }
 
     pub fn toggle_select_one_feature(&mut self) {
-        match self.category_tabs {
-            CategoriesTabs::General => {
-                let current_crate =
-                    &mut self.general_crates[self.features.widget.index_current_crate];
-                toggle_one_feature(current_crate, &self.features.state);
-            }
-            CategoriesTabs::Common => {
-                let current_crate =
-                    &mut self.common_crates[self.features.widget.index_current_crate];
-                toggle_one_feature(current_crate, &self.features.state);
-            }
-            CategoriesTabs::FFI => {
-                let current_crate = &mut self.ffi_crates[self.features.widget.index_current_crate];
-                toggle_one_feature(current_crate, &self.features.state);
-            }
+        let (current_crate_selected, index_current_crate_selected) =
+            self.get_current_crate_selected().unwrap();
+        if !current_crate_selected.is_loading {
+            match self.category_tabs {
+                CategoriesTabs::General => {
+                    let current_crate = &mut self.general_crates[index_current_crate_selected];
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
+                CategoriesTabs::Common => {
+                    let current_crate = &mut self.common_crates[index_current_crate_selected];
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
+                CategoriesTabs::FFI => {
+                    let current_crate = &mut self.ffi_crates[index_current_crate_selected];
+                    if !current_crate.is_loading {
+                        toggle_one_feature(current_crate, &self.features.state);
+                    }
+                }
 
-            CategoriesTabs::Math => {
-                let current_crate = &mut self.math_crates[self.features.widget.index_current_crate];
-                toggle_one_feature(current_crate, &self.features.state);
-            }
+                CategoriesTabs::Math => {
+                    let current_crate = &mut self.math_crates[index_current_crate_selected];
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
 
-            CategoriesTabs::Clis => {
-                let current_crate = &mut self.clis_crates[self.features.widget.index_current_crate];
-                toggle_one_feature(current_crate, &self.features.state);
-            }
+                CategoriesTabs::Clis => {
+                    let current_crate = &mut self.clis_crates[index_current_crate_selected];
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
 
-            CategoriesTabs::Graphics => {
-                let current_crate =
-                    &mut self.graphics_crates[self.features.widget.index_current_crate];
-                toggle_one_feature(current_crate, &self.features.state);
-            }
+                CategoriesTabs::Graphics => {
+                    let current_crate = &mut self.graphics_crates[index_current_crate_selected];
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
 
-            CategoriesTabs::Databases => {
-                let current_crate =
-                    &mut self.database_crates[self.features.widget.index_current_crate];
-                toggle_one_feature(current_crate, &self.features.state);
-            }
-            CategoriesTabs::Networking => {
-                let current_crate =
-                    &mut self.networking_crates[self.features.widget.index_current_crate];
-                toggle_one_feature(current_crate, &self.features.state);
-            }
-            CategoriesTabs::Concurrency => {
-                let current_crate =
-                    &mut self.concurrency_crates[self.features.widget.index_current_crate];
-                toggle_one_feature(current_crate, &self.features.state);
-            }
+                CategoriesTabs::Databases => {
+                    let current_crate = &mut self.database_crates[index_current_crate_selected];
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
+                CategoriesTabs::Networking => {
+                    let current_crate = &mut self.networking_crates[index_current_crate_selected];
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
+                CategoriesTabs::Concurrency => {
+                    let current_crate = &mut self.concurrency_crates[index_current_crate_selected];
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
 
-            CategoriesTabs::Cryptography => {
-                let current_crate =
-                    &mut self.cryptography_crates[self.features.widget.index_current_crate];
-                toggle_one_feature(current_crate, &self.features.state);
+                CategoriesTabs::Cryptography => {
+                    let current_crate = &mut self.cryptography_crates[index_current_crate_selected];
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
             }
         }
     }
@@ -735,9 +736,17 @@ impl AppView {
         Clear.render(center, buf);
 
         if current_crate_selected.is_loading {
-            Paragraph::new("Fetching features, please wait a moment")
-                .block(Block::bordered().title(self.features.widget.crate_name.clone()))
-                .render(center, buf);
+            Block::bordered().render(center, buf);
+
+            let loader = Throbber::default()
+                .label(format!(
+                    "Fetching features of {}, please wait a moment",
+                    self.features.widget.crate_name
+                ))
+                .throbber_set(throbber_widgets_tui::BRAILLE_SIX)
+                .use_type(throbber_widgets_tui::WhichUse::Spin);
+
+            StatefulWidget::render(loader, center, buf, &mut self.loader_state);
         } else {
             StatefulWidget::render(
                 self.features.widget.clone(),
