@@ -24,17 +24,18 @@ pub struct Popup {
     pub message: String,
 }
 
-
 #[derive(Debug, Default, Clone)]
 pub struct FeatureItemList {
-    name : String,
-    status : ItemListStatus
+    name: String,
+    status: ItemListStatus,
 }
 
 impl FeatureItemList {
-
-    pub fn new(name : String) -> Self {
-        Self { name, status: ItemListStatus::Unselected }
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            status: ItemListStatus::Unselected,
+        }
     }
 }
 
@@ -45,34 +46,39 @@ impl From<FeatureItemList> for ListItem<'_> {
             ItemListStatus::Unselected => ("☐", Color::default()),
         };
 
-        let line = Line::from(vec![
-            value.name.into(),
-            " ".into(),
-            is_selected.into(),
-        ]);
+        let line = Line::from(vec![value.name.into(), " ".into(), is_selected.into()]);
 
         ListItem::new(line).style(Style::default().bg(bg_color))
-
     }
 }
 
-
 #[derive(Debug, Default, Clone)]
 pub struct FeaturesWidgetList {
+    pub index_current_crate: usize,
+    pub crate_name: String,
     pub features: Option<Vec<FeatureItemList>>,
 }
 
 impl FeaturesWidgetList {
-    pub fn new(features: Option<Vec<FeatureItemList>>) -> Self {
-        Self { features }
+    pub fn new(
+        index_current_crate: usize,
+        crate_name: String,
+        features: Option<Vec<FeatureItemList>>,
+    ) -> Self {
+        Self {
+            index_current_crate,
+            crate_name,
+            features,
+        }
     }
 }
 
 impl StatefulWidget for FeaturesWidgetList {
     type State = ListState;
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-
-        Block::bordered().title("Features").render(area, buf);
+        Block::bordered()
+            .title(format!("Features of crate: {}", self.crate_name))
+            .render(area, buf);
 
         let inner_area = area.inner(&Margin {
             vertical: 1,
@@ -82,7 +88,9 @@ impl StatefulWidget for FeaturesWidgetList {
         let features = if self.features.is_some() {
             self.features.unwrap()
         } else {
-            vec![FeatureItemList::new("Fetching features, please wait a moment".to_string())]
+            vec![FeatureItemList::new(
+                "Fetching features, please wait a moment".to_string(),
+            )]
         };
 
         let features_list = List::new(features)
@@ -228,7 +236,9 @@ impl CratesListWidget {
     }
 }
 
-#[derive(Default, Clone, Copy, Display, FromRepr, EnumIter,  PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(
+    Default, Clone, Copy, Display, FromRepr, EnumIter, PartialEq, Eq, PartialOrd, Ord, Debug,
+)]
 pub enum CategoriesTabs {
     #[strum(to_string = "General")]
     #[default]

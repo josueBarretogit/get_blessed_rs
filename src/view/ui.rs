@@ -110,6 +110,10 @@ impl Widget for &mut AppView {
 
         self.render_footer_instructions(footer_area, buf);
 
+        if self.is_showing_features {
+            self.render_features_popup(area, buf);
+        }
+
         if self.is_adding_dependencies {
             let center = centered_rect(60, 20, area);
             Clear.render(center, buf);
@@ -119,28 +123,6 @@ impl Widget for &mut AppView {
                 buf,
                 &mut self.loader_state,
             );
-        }
-
-        if self.is_showing_features {
-            let center = centered_rect(80, 20, area);
-            let current_crate_selected = self.get_current_crate_selected().unwrap();
-
-            let features = if current_crate_selected.features.is_some() {
-                Some(
-                    current_crate_selected
-                        .features
-                        .unwrap()
-                        .iter()
-                        .map(|featu| FeatureItemList::new(featu.to_string()))
-                        .collect(),
-                )
-            } else {
-                None
-            };
-
-            let features_popup = FeaturesWidgetList::new(features);
-            Clear.render(center, buf);
-            StatefulWidget::render(features_popup, center, buf, &mut self.features.state);
         }
     }
 }
@@ -286,7 +268,6 @@ impl AppView {
     fn render_crates_list(&mut self, area: Rect, buf: &mut Buffer) {
         match self.category_tabs {
             CategoriesTabs::General => {
-
                 self.crates_list.crates_widget_list = CratesListWidget::new(&self.general_crates);
 
                 StatefulWidget::render(
@@ -462,9 +443,9 @@ impl AppView {
     pub fn scroll_up_features(&mut self) {
         let next_index = match self.features.state.selected() {
             Some(index) => {
+                let (current_crate_selected, _) = self.get_current_crate_selected().unwrap();
                 if index == 0 {
-                    self.get_current_crate_selected()
-                        .unwrap()
+                    current_crate_selected
                         .features
                         .unwrap_or_default()
                         .len()
@@ -481,10 +462,9 @@ impl AppView {
     pub fn scroll_down_features(&mut self) {
         let next = match self.features.state.selected() {
             Some(index) => {
+                let (current_crate_selected, _) = self.get_current_crate_selected().unwrap();
                 if index
-                    == self
-                        .get_current_crate_selected()
-                        .unwrap()
+                    == current_crate_selected
                         .features
                         .unwrap_or_default()
                         .iter()
@@ -583,11 +563,11 @@ impl AppView {
         }
     }
 
-    fn get_current_crate_selected(&self) -> Option<CrateItemList> {
-        self.crates_list
-            .state
-            .selected()
-            .map(|index| self.crates_list.crates_widget_list.crates[index].clone())
+    fn get_current_crate_selected(&self) -> Option<(CrateItemList, usize)> {
+        self.crates_list.state.selected().map(|index| {
+            let crate_item = self.crates_list.crates_widget_list.crates[index].clone();
+            (crate_item, index)
+        })
     }
 
     pub fn toggle_select_dependencie(&mut self) {
@@ -678,5 +658,39 @@ impl AppView {
         if self.get_current_crate_selected().is_some() {
             self.is_showing_features = !self.is_showing_features;
         }
+    }
+
+    pub fn toggle_select_one_feature(&mut self) {}
+
+    fn render_features_popup(&mut self, area: Rect, buf: &mut Buffer) {
+        let center = centered_rect(80, 40, area);
+        let (current_crate_selected, index_current_crate_selected) =
+            self.get_current_crate_selected().unwrap();
+        let features = if current_crate_selected.features.is_some() {
+            Some(
+                current_crate_selected
+                    .features
+                    .unwrap()
+                    .iter()
+                    .map(|featu| FeatureItemList::new(featu.to_string()))
+                    .collect(),
+            )
+        } else {
+            None
+        };
+
+        self.features.widget = FeaturesWidgetList::new(
+            index_current_crate_selected,
+            current_crate_selected.name,
+            features,
+        );
+
+        Clear.render(center, buf);
+        StatefulWidget::render(
+            self.features.widget.clone(),
+            center,
+            buf,
+            &mut self.features.state,
+        );
     }
 }

@@ -48,9 +48,23 @@ pub fn update(app: &mut AppView, action: Action) {
 
         Action::CheckDocs => app.check_docs(),
         Action::CheckCratesIo => app.check_crates_io(),
-        Action::ScrollPreviousCategory => app.previos_tab(),
-        Action::ScrollNextCategory => app.next_tab(),
-        Action::ToggleOne => app.toggle_select_dependencie(),
+        Action::ScrollPreviousCategory => {
+            if !app.is_showing_features {
+                app.previos_tab();
+            }
+        }
+        Action::ScrollNextCategory => {
+            if !app.is_showing_features {
+                app.next_tab();
+            }
+        }
+        Action::ToggleOne => {
+            if app.is_showing_features {
+                app.toggle_select_one_feature();
+            } else {
+                app.toggle_select_dependencie();
+            }
+        }
         Action::ToggleAll => app.toggle_select_all_dependencies(),
         Action::Tick => {
             app.on_tick();
