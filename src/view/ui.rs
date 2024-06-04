@@ -25,7 +25,7 @@ use crate::{
 
 use super::widgets::{
     CategoriesTabs, CrateItemList, CratesListWidget, DependenciesListWidget, FeatureItemList,
-    FeaturesWidgetList, FooterInstructions, Popup,
+    FeaturesWidgetList, FooterInstructions, ItemListStatus, Popup,
 };
 
 pub struct AppView {
@@ -568,7 +568,7 @@ impl AppView {
         }
     }
 
-    fn get_current_crate_selected(&self) -> Option<(CrateItemList, usize)> {
+    pub fn get_current_crate_selected(&self) -> Option<(CrateItemList, usize)> {
         self.crates_list.state.selected().map(|index| {
             let crate_item = self.crates_list.crates_widget_list.crates[index].clone();
             (crate_item, index)
@@ -673,50 +673,81 @@ impl AppView {
             match self.category_tabs {
                 CategoriesTabs::General => {
                     let current_crate = &mut self.general_crates[index_current_crate_selected];
-                    toggle_one_feature(current_crate, &self.features.state);
+
+                    toggle_one_feature(
+                        current_crate,
+                        &self.features.state,
+                    );
+
+                    
                 }
                 CategoriesTabs::Common => {
                     let current_crate = &mut self.common_crates[index_current_crate_selected];
-                    toggle_one_feature(current_crate, &self.features.state);
+                    toggle_one_feature(
+                        current_crate,
+                        &self.features.state,
+                    );
                 }
                 CategoriesTabs::FFI => {
                     let current_crate = &mut self.ffi_crates[index_current_crate_selected];
-                    if !current_crate.is_loading {
-                        toggle_one_feature(current_crate, &self.features.state);
-                    }
+                    toggle_one_feature(
+                        current_crate,
+                        &self.features.state,
+                    );
                 }
 
                 CategoriesTabs::Math => {
                     let current_crate = &mut self.math_crates[index_current_crate_selected];
-                    toggle_one_feature(current_crate, &self.features.state);
+                    toggle_one_feature(
+                        current_crate,
+                        &self.features.state,
+                    );
                 }
 
                 CategoriesTabs::Clis => {
                     let current_crate = &mut self.clis_crates[index_current_crate_selected];
-                    toggle_one_feature(current_crate, &self.features.state);
+                    toggle_one_feature(
+                        current_crate,
+                        &self.features.state,
+                    );
                 }
 
                 CategoriesTabs::Graphics => {
                     let current_crate = &mut self.graphics_crates[index_current_crate_selected];
-                    toggle_one_feature(current_crate, &self.features.state);
+                    toggle_one_feature(
+                        current_crate,
+                        &self.features.state,
+                    );
                 }
 
                 CategoriesTabs::Databases => {
                     let current_crate = &mut self.database_crates[index_current_crate_selected];
-                    toggle_one_feature(current_crate, &self.features.state);
+                    toggle_one_feature(
+                        current_crate,
+                        &self.features.state,
+                    );
                 }
                 CategoriesTabs::Networking => {
                     let current_crate = &mut self.networking_crates[index_current_crate_selected];
-                    toggle_one_feature(current_crate, &self.features.state);
+                    toggle_one_feature(
+                        current_crate,
+                        &self.features.state,
+                    );
                 }
                 CategoriesTabs::Concurrency => {
                     let current_crate = &mut self.concurrency_crates[index_current_crate_selected];
-                    toggle_one_feature(current_crate, &self.features.state);
+                    toggle_one_feature(
+                        current_crate,
+                        &self.features.state,
+                    );
                 }
 
                 CategoriesTabs::Cryptography => {
                     let current_crate = &mut self.cryptography_crates[index_current_crate_selected];
-                    toggle_one_feature(current_crate, &self.features.state);
+                    toggle_one_feature(
+                        current_crate,
+                        &self.features.state,
+                    );
                 }
             }
         }

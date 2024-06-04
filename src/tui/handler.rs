@@ -7,7 +7,9 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
 use crate::content_parser::content_parser::JsonContentParser;
-use crate::view::widgets::{CategoriesTabs, CrateItemList, FeatureItemList};
+use crate::dependency_builder::CrateToAdd;
+use crate::utils::select_crate_if_features_are_selected;
+use crate::view::widgets::{CategoriesTabs, CrateItemList, FeatureItemList, ItemListStatus};
 use crate::{dependency_builder::DependenciesBuilder, view::ui::AppView};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -35,6 +37,9 @@ pub fn update(app: &mut AppView, action: Action) {
     match action {
         Action::ToggleShowFeatures => {
             app.toggle_show_features();
+            if !app.is_showing_features {
+                select_crate_if_features_are_selected(app);
+            }
         }
         Action::ShowAddingDependenciesOperation => {
             let tx = app.action_tx.clone();
@@ -59,7 +64,7 @@ pub fn update(app: &mut AppView, action: Action) {
             }
         }
         Action::ToggleOne => {
-            if app.is_showing_features  {
+            if app.is_showing_features {
                 app.toggle_select_one_feature();
             } else {
                 app.toggle_select_dependencie();
@@ -326,10 +331,14 @@ fn fetch_features(
                 if let Some(latest) = information.versions.first() {
                     tx.send(Action::UpdateFeatures(
                         category,
-                        latest.features.clone().into_keys().map(|feat| FeatureItemList::new(feat)).collect(),
+                        latest
+                            .features
+                            .clone()
+                            .into_keys()
+                            .map(FeatureItemList::new)
+                            .collect(),
                         index,
-                    ))
-                    .unwrap();
+                    )).unwrap_or(());
                 };
             };
         });
