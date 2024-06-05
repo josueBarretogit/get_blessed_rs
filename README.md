@@ -13,13 +13,13 @@ them to your rust projects right in your terminal.
 ## Features
 
 
-- Check out a crate documentation you can by pressing `<d>` (Opens a tab in your default web browser)
-- Check out a crate crates.io page you can by pressing `<c>` (Opens a tab in your default web browser)
-- Change categories with `<Tab>` or `<Shift + Tab>` 
-- Move up and down with either arroy keys or with `<j>` / `<k>`
-- Select the crate you want to add to your project by pressing `<s>`
+- Check out a crate documentation pressing `<d>` (Opens a tab in your default web browser)
+- Check out a crate crates.io page pressing `<c>` (Opens a tab in your default web browser)
+- Move between categories with `<Tab>` or `<Shift + Tab>` 
+- Move up and down with either arrow keys or with `<j>` / `<k>`
+- Select the crate you want in your project by pressing `<s>`
 - Select all the crates from a category by pressing `<a>`
-- Select a crate with features by pressing  `<f>` to select its features
+- Select a crate with features by pressing `<f>` (Opens a popup where you can select the features with `<s>`)
 - Add the selected crates to your rust project by pressing `<Enter>`
   
 ![features](./public/features.gif)
