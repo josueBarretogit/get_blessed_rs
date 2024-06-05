@@ -3,13 +3,16 @@ use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
 use ratatui::{
     prelude::*,
     style::{palette::tailwind, Style},
-    widgets::{block::*, *},
+    widgets::{
+        block::{Block, Padding, Position, Title},
+        HighlightSpacing, List, ListDirection, ListItem, ListState,
+    },
 };
 use throbber_widgets_tui::{Throbber, ThrobberState};
 
 use crate::dependency_builder::CrateToAdd;
 
-#[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ItemListStatus {
     Selected,
     #[default]
@@ -19,6 +22,94 @@ pub enum ItemListStatus {
 #[derive(Debug, Default, Clone)]
 pub struct Popup {
     pub message: String,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct FeatureItemList {
+    pub name: String,
+    pub status: ItemListStatus,
+}
+
+impl FeatureItemList {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            status: ItemListStatus::Unselected,
+        }
+    }
+}
+
+impl From<FeatureItemList> for ListItem<'_> {
+    fn from(value: FeatureItemList) -> Self {
+        let (is_selected, bg_color) = match value.status {
+            ItemListStatus::Selected => ("✓", tailwind::BLUE.c300),
+            ItemListStatus::Unselected => ("☐", Color::default()),
+        };
+
+        let line = Line::from(vec![value.name.into(), " ".into(), is_selected.into()]);
+
+        ListItem::new(line).style(Style::default().bg(bg_color))
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct FeaturesWidgetList {
+    pub index_current_crate: usize,
+    pub crate_name: String,
+    pub features: Option<Vec<FeatureItemList>>,
+}
+
+impl FeaturesWidgetList {
+    pub fn new(
+        index_current_crate: usize,
+        crate_name: String,
+        features: Option<Vec<FeatureItemList>>,
+    ) -> Self {
+        Self {
+            index_current_crate,
+            crate_name,
+            features,
+        }
+    }
+}
+
+impl StatefulWidget for FeaturesWidgetList {
+    type State = ListState;
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+        Block::bordered()
+            .title(format!("Features of crate: {}", self.crate_name))
+            .title_bottom(Line::from(vec![
+                "Toggle select ".into(),
+                "<s> ".bold().blue(),
+                "Move down ".into(),
+                "<Down> <j> ".bold().blue(),
+                "Move up ".into(),
+                "<Up> <k> ".bold().blue(),
+                "Close ".into(),
+                "<f>".bold().blue(),
+            ]))
+            .render(area, buf);
+
+        let inner_area = area.inner(&Margin {
+            vertical: 1,
+            horizontal: 1,
+        });
+
+        let features = if self.features.is_some() {
+            self.features.unwrap()
+        } else {
+            vec![FeatureItemList::new(
+                "Fetching features, please wait a moment".to_string(),
+            )]
+        };
+
+        let features_list = List::new(features)
+            .highlight_style(Style::default().blue())
+            .highlight_symbol(">> ")
+            .direction(ListDirection::TopToBottom);
+
+        StatefulWidget::render(features_list, inner_area, buf, state);
+    }
 }
 
 impl StatefulWidget for Popup {
@@ -43,16 +134,17 @@ impl StatefulWidget for Popup {
             .throbber_set(throbber_widgets_tui::BRAILLE_SIX)
             .use_type(throbber_widgets_tui::WhichUse::Spin);
 
-        StatefulWidget::render(loader, inner_area, buf, state)
+        StatefulWidget::render(loader, inner_area, buf, state);
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct CrateItemList {
     pub name: String,
     pub description: String,
-    pub features: Option<Vec<String>>,
+    pub features: Option<Vec<FeatureItemList>>,
     pub status: ItemListStatus,
+    pub is_loading: bool,
 }
 
 #[derive(Clone, Default)]
@@ -96,13 +188,14 @@ impl CrateItemList {
         name: String,
         description: String,
         status: ItemListStatus,
-        features: Option<Vec<String>>,
+        features: Option<Vec<FeatureItemList>>,
     ) -> Self {
         Self {
             name,
             description,
-            status,
             features,
+            status,
+            is_loading: true,
         }
     }
 }
@@ -112,17 +205,17 @@ pub struct CratesListWidget {
     pub crates: Vec<CrateItemList>,
 }
 
-impl Into<ListItem<'_>> for CrateItemList {
-    fn into(self) -> ListItem<'static> {
-        let (is_selected, bg_color) = match self.status {
+impl From<CrateItemList> for ListItem<'_> {
+    fn from(val: CrateItemList) -> Self {
+        let (is_selected, bg_color) = match val.status {
             ItemListStatus::Selected => ("✓", tailwind::BLUE.c300),
             ItemListStatus::Unselected => ("☐", Color::default()),
         };
 
         let line = Line::from(vec![
-            self.name.bold().blue(),
+            val.name.bold().blue(),
             " ".into(),
-            self.description.into(),
+            val.description.into(),
             " ".into(),
             is_selected.into(),
         ]);
@@ -148,14 +241,16 @@ impl StatefulWidget for CratesListWidget {
 }
 
 impl CratesListWidget {
-    pub fn new(crates: &Vec<CrateItemList>) -> Self {
+    pub fn new(crates: &[CrateItemList]) -> Self {
         Self {
             crates: crates.to_vec(),
         }
     }
 }
 
-#[derive(Default, Clone, Copy, Display, FromRepr, EnumIter)]
+#[derive(
+    Default, Clone, Copy, Display, FromRepr, EnumIter, PartialEq, Eq, PartialOrd, Ord, Debug,
+)]
 pub enum CategoriesTabs {
     #[strum(to_string = "General")]
     #[default]
@@ -188,6 +283,7 @@ pub enum CategoriesTabs {
     Graphics,
 }
 
+//Heavy use of unwrap here, this is infalle, I think
 impl CategoriesTabs {
     pub fn next(self) -> Self {
         let current_index = self as usize;
@@ -198,7 +294,11 @@ impl CategoriesTabs {
     pub fn previous(self) -> Self {
         let current_index = self as usize;
         let previous_index = current_index.saturating_sub(1);
-        Self::from_repr(previous_index).unwrap_or(self)
+        if current_index == 0 {
+            return Self::from_repr(Self::iter().len() - 1).unwrap();
+        }
+
+        Self::from_repr(previous_index).unwrap()
     }
 }
 
@@ -238,7 +338,7 @@ impl<'a> Widget for FooterInstructions<'a> {
     {
         let instructions = Title::from(Line::from(self.instructions));
 
-        let info = Title::from(Line::from(vec!["V0.1.3".into()]))
+        let info = Title::from(Line::from(vec!["V0.2.0".into()]))
             .position(Position::Top)
             .alignment(Alignment::Right);
 

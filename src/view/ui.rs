@@ -1,48 +1,60 @@
-use std::usize;
-use throbber_widgets_tui::ThrobberState;
+#![allow(clippy::too_many_lines)]
+use throbber_widgets_tui::{Throbber, ThrobberState};
 use tokio::sync::mpsc::UnboundedSender;
 
 use ratatui::{
     prelude::*,
     symbols::border,
-    widgets::{block::*, *},
+    widgets::{
+        block::{Block, Position, Title},
+        Clear, ListState,
+    },
 };
 
 use crate::{
     backend::{Categories, CategoriesWithSubCategories},
-    content_parser::content_parser::ContentParser,
+    content_parser::ContentParser,
     dependency_builder::CrateToAdd,
     tui::handler::Action,
-    utils::{centered_rect, toggle_dependencies_all, toggle_one_dependency, toggle_status_all},
+    utils::{
+        centered_rect, toggle_dependencies_all, toggle_one_dependency, toggle_one_feature,
+        toggle_status_all,
+    },
 };
 
-use super::widgets::{DependenciesListWidget, *};
+use super::widgets::{
+    CategoriesTabs, CrateItemList, CratesListWidget, DependenciesListWidget, FeaturesWidgetList,
+    FooterInstructions, Popup,
+};
 
 pub struct AppView {
     pub action_tx: UnboundedSender<Action>,
     pub dependencies_to_add_list: DependenciesList,
     pub crates_list: CratesList,
     pub category_tabs: CategoriesTabs,
-
-    is_adding_deps: bool,
-
+    is_adding_dependencies: bool,
     popup_widget: Popup,
-
+    features: Features,
     loader_state: throbber_widgets_tui::ThrobberState,
-
     pub exit: bool,
-    categories_list_state: ListState,
+    pub is_showing_features: bool,
+    pub categories_list_state: ListState,
+    pub general_crates: Vec<CrateItemList>,
+    pub math_crates: Vec<CrateItemList>,
+    pub ffi_crates: Vec<CrateItemList>,
+    pub cryptography_crates: Vec<CrateItemList>,
+    pub common_crates: Vec<CrateItemList>,
+    pub concurrency_crates: Vec<CrateItemList>,
+    pub networking_crates: Vec<CrateItemList>,
+    pub database_crates: Vec<CrateItemList>,
+    pub clis_crates: Vec<CrateItemList>,
+    pub graphics_crates: Vec<CrateItemList>,
+}
 
-    general_crates: Vec<CrateItemList>,
-    math_crates: Vec<CrateItemList>,
-    ffi_crates: Vec<CrateItemList>,
-    cryptography_crates: Vec<CrateItemList>,
-    common_crates: Vec<CrateItemList>,
-    concurrency_crates: Vec<CrateItemList>,
-    networking_crates: Vec<CrateItemList>,
-    database_crates: Vec<CrateItemList>,
-    clis_crates: Vec<CrateItemList>,
-    graphics_crates: Vec<CrateItemList>,
+#[derive(Default)]
+pub struct Features {
+    widget: FeaturesWidgetList,
+    state: ListState,
 }
 
 #[derive(Default)]
@@ -60,8 +72,8 @@ pub struct DependenciesList {
 impl DependenciesList {
     pub const fn new(state: ListState, dependencies_to_add: Vec<CrateToAdd>) -> Self {
         Self {
-            state,
             dependencies_to_add,
+            state,
         }
     }
 }
@@ -96,70 +108,86 @@ impl Widget for &mut AppView {
 
         self.render_footer_instructions(footer_area, buf);
 
-        if self.is_adding_deps {
+        if self.is_showing_features {
+            self.render_features_popup(area, buf);
+        }
+
+        if self.is_adding_dependencies {
             let center = centered_rect(60, 20, area);
-            Clear::default().render(center, buf);
+            Clear.render(center, buf);
             StatefulWidget::render(
                 self.popup_widget.clone(),
                 center,
                 buf,
                 &mut self.loader_state,
-            )
+            );
         }
     }
 }
 
 impl AppView {
-    pub async fn new(action_tx: UnboundedSender<Action>) -> Self {
-        let page_contents = ContentParser::new().await;
+    pub fn setup(action_tx: UnboundedSender<Action>, parser: &dyn ContentParser) -> Self {
+        let page_contents = parser;
 
         let mut list_state = ListState::default();
+        let mut feature_list_state = ListState::default();
 
         list_state.select(Some(0));
-        let general_crates = page_contents.get_general_crates();
+        feature_list_state.select(Some(0));
 
-        let math_crates = page_contents.get_crates(Categories::Math);
-        let ffi_crates = page_contents.get_crates(Categories::FFI);
-        let cryptography_crates = page_contents.get_crates(Categories::Cryptography);
+        let general_crates: Vec<CrateItemList> = page_contents.get_general_crates().into();
 
-        let common_crates = page_contents.get_crates_with_sub(CategoriesWithSubCategories::Common);
-        let concurrency_crates =
-            page_contents.get_crates_with_sub(CategoriesWithSubCategories::Concurrency);
-        let networking_crates =
-            page_contents.get_crates_with_sub(CategoriesWithSubCategories::Networking);
-        let database_crates =
-            page_contents.get_crates_with_sub(CategoriesWithSubCategories::Databases);
-        let clis_crates = page_contents.get_crates_with_sub(CategoriesWithSubCategories::Clis);
-        let graphics_crates =
-            page_contents.get_crates_with_sub(CategoriesWithSubCategories::Graphics);
+        let math_crates: Vec<CrateItemList> = page_contents.get_crates(&Categories::Math).into();
+        let ffi_crates: Vec<CrateItemList> = page_contents.get_crates(&Categories::FFI).into();
+        let cryptography_crates: Vec<CrateItemList> =
+            page_contents.get_crates(&Categories::Cryptography).into();
+
+        let common_crates: Vec<CrateItemList> = page_contents
+            .get_crates_with_sub(&CategoriesWithSubCategories::Common)
+            .into();
+        let concurrency_crates: Vec<CrateItemList> = page_contents
+            .get_crates_with_sub(&CategoriesWithSubCategories::Concurrency)
+            .into();
+        let networking_crates: Vec<CrateItemList> = page_contents
+            .get_crates_with_sub(&CategoriesWithSubCategories::Networking)
+            .into();
+        let database_crates: Vec<CrateItemList> = page_contents
+            .get_crates_with_sub(&CategoriesWithSubCategories::Databases)
+            .into();
+        let clis_crates: Vec<CrateItemList> = page_contents
+            .get_crates_with_sub(&CategoriesWithSubCategories::Clis)
+            .into();
+        let graphics_crates: Vec<CrateItemList> = page_contents
+            .get_crates_with_sub(&CategoriesWithSubCategories::Graphics)
+            .into();
 
         Self {
             action_tx,
             dependencies_to_add_list: DependenciesList::default(),
             crates_list: CratesList::default(),
             category_tabs: CategoriesTabs::default(),
-            is_adding_deps: false,
+            is_adding_dependencies: false,
             loader_state: ThrobberState::default(),
 
-            general_crates: general_crates.into(),
+            general_crates,
 
-            math_crates: math_crates.into(),
-            ffi_crates: ffi_crates.into(),
-
-            cryptography_crates: cryptography_crates.into(),
-
-            common_crates: common_crates.into(),
-            concurrency_crates: concurrency_crates.into(),
-            networking_crates: networking_crates.into(),
-            database_crates: database_crates.into(),
-            clis_crates: clis_crates.into(),
-            graphics_crates: graphics_crates.into(),
+            math_crates,
+            ffi_crates,
+            cryptography_crates,
+            common_crates,
+            concurrency_crates,
+            networking_crates,
+            database_crates,
+            clis_crates,
+            graphics_crates,
 
             categories_list_state: list_state,
 
             exit: false,
+            is_showing_features: false,
 
             popup_widget: Popup::default(),
+            features: Features::default(),
         }
     }
 
@@ -215,6 +243,8 @@ impl AppView {
             "<d> ".blue(),
             "Check crates.io ".into(),
             "<c> ".blue(),
+            "Select features ".into(),
+            "<f> ".blue(),
         ]));
 
         Block::bordered()
@@ -239,6 +269,7 @@ impl AppView {
         match self.category_tabs {
             CategoriesTabs::General => {
                 self.crates_list.crates_widget_list = CratesListWidget::new(&self.general_crates);
+
                 StatefulWidget::render(
                     self.crates_list.crates_widget_list.clone(),
                     area,
@@ -248,6 +279,7 @@ impl AppView {
             }
             CategoriesTabs::Graphics => {
                 self.crates_list.crates_widget_list = CratesListWidget::new(&self.graphics_crates);
+
                 StatefulWidget::render(
                     self.crates_list.crates_widget_list.clone(),
                     area,
@@ -387,7 +419,6 @@ impl AppView {
             }
             None => self.crates_list.state.selected().unwrap_or(0),
         };
-
         self.crates_list.state.select(Some(next));
     }
 
@@ -407,6 +438,48 @@ impl AppView {
             None => 1,
         };
         self.crates_list.state.select(Some(next_index));
+    }
+
+    pub fn scroll_up_features(&mut self) {
+        let next_index = match self.features.state.selected() {
+            Some(index) => {
+                let (current_crate_selected, _) = self.get_current_crate_selected().unwrap();
+                if index == 0 {
+                    current_crate_selected
+                        .features
+                        .unwrap_or_default()
+                        .len()
+                        .saturating_sub(1)
+                } else {
+                    index.saturating_sub(1)
+                }
+            }
+            None => 1,
+        };
+        self.features.state.select(Some(next_index));
+    }
+
+    pub fn scroll_down_features(&mut self) {
+        let next = match self.features.state.selected() {
+            Some(index) => {
+                let (current_crate_selected, _) = self.get_current_crate_selected().unwrap();
+                if index
+                    == current_crate_selected
+                        .features
+                        .unwrap_or_default()
+                        .iter()
+                        .len()
+                        .saturating_sub(1)
+                {
+                    0
+                } else {
+                    index.saturating_add(1)
+                }
+            }
+            None => self.features.state.selected().unwrap_or(0),
+        };
+
+        self.features.state.select(Some(next));
     }
 
     pub fn toggle_select_all_dependencies(&mut self) {
@@ -490,6 +563,13 @@ impl AppView {
         }
     }
 
+    pub fn get_current_crate_selected(&self) -> Option<(CrateItemList, usize)> {
+        self.crates_list.state.selected().map(|index| {
+            let crate_item = self.crates_list.crates_widget_list.crates[index].clone();
+            (crate_item, index)
+        })
+    }
+
     pub fn toggle_select_dependencie(&mut self) {
         if let Some(index_crate_selected) = self.crates_list.state.selected() {
             match self.category_tabs {
@@ -544,14 +624,15 @@ impl AppView {
         }
     }
 
+    #[inline]
     pub fn show_popup(&mut self) {
-        self.is_adding_deps = true;
+        self.is_adding_dependencies = true;
     }
 
     pub fn check_docs(&self) {
         if let Some(index_selected) = self.crates_list.state.selected() {
             let crate_name = &self.crates_list.crates_widget_list.crates[index_selected].name;
-            let url = format!("https://docs.rs/{}/latest/{}/", crate_name, crate_name);
+            let url = format!("https://docs.rs/{crate_name}/latest/{crate_name}/");
 
             open::that(url).ok();
         }
@@ -567,7 +648,106 @@ impl AppView {
         }
     }
 
+    #[inline]
     pub fn on_tick(&mut self) {
-        self.loader_state.calc_next()
+        self.loader_state.calc_next();
+    }
+
+    #[inline]
+    pub fn toggle_show_features(&mut self) {
+        if self.get_current_crate_selected().is_some() {
+            self.features.state.select(Some(0));
+            self.is_showing_features = !self.is_showing_features;
+        }
+    }
+
+    pub fn toggle_select_one_feature(&mut self) {
+        let (current_crate_selected, index_current_crate_selected) =
+            self.get_current_crate_selected().unwrap();
+        if !current_crate_selected.is_loading {
+            match self.category_tabs {
+                CategoriesTabs::General => {
+                    let current_crate = &mut self.general_crates[index_current_crate_selected];
+
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
+                CategoriesTabs::Common => {
+                    let current_crate = &mut self.common_crates[index_current_crate_selected];
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
+                CategoriesTabs::FFI => {
+                    let current_crate = &mut self.ffi_crates[index_current_crate_selected];
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
+
+                CategoriesTabs::Math => {
+                    let current_crate = &mut self.math_crates[index_current_crate_selected];
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
+
+                CategoriesTabs::Clis => {
+                    let current_crate = &mut self.clis_crates[index_current_crate_selected];
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
+
+                CategoriesTabs::Graphics => {
+                    let current_crate = &mut self.graphics_crates[index_current_crate_selected];
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
+
+                CategoriesTabs::Databases => {
+                    let current_crate = &mut self.database_crates[index_current_crate_selected];
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
+                CategoriesTabs::Networking => {
+                    let current_crate = &mut self.networking_crates[index_current_crate_selected];
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
+                CategoriesTabs::Concurrency => {
+                    let current_crate = &mut self.concurrency_crates[index_current_crate_selected];
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
+
+                CategoriesTabs::Cryptography => {
+                    let current_crate = &mut self.cryptography_crates[index_current_crate_selected];
+                    toggle_one_feature(current_crate, &self.features.state);
+                }
+            }
+        }
+    }
+
+    fn render_features_popup(&mut self, area: Rect, buf: &mut Buffer) {
+        let center = centered_rect(80, 40, area);
+        let (current_crate_selected, index_current_crate_selected) =
+            self.get_current_crate_selected().unwrap();
+
+        self.features.widget = FeaturesWidgetList::new(
+            index_current_crate_selected,
+            current_crate_selected.name,
+            current_crate_selected.features,
+        );
+
+        Clear.render(center, buf);
+
+        if current_crate_selected.is_loading {
+            Block::bordered().render(center, buf);
+
+            let loader = Throbber::default()
+                .label(format!(
+                    "Fetching features of {}, please wait a moment",
+                    self.features.widget.crate_name
+                ))
+                .throbber_set(throbber_widgets_tui::BRAILLE_SIX)
+                .use_type(throbber_widgets_tui::WhichUse::Spin);
+
+            StatefulWidget::render(loader, center, buf, &mut self.loader_state);
+        } else {
+            StatefulWidget::render(
+                self.features.widget.clone(),
+                center,
+                buf,
+                &mut self.features.state,
+            );
+        }
     }
 }

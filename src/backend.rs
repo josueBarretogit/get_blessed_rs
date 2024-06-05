@@ -1,8 +1,7 @@
 use strum::{Display, EnumIter, FromRepr};
 
-use crate::view::widgets::{CrateItemList, ItemListStatus};
+use crate::view::widgets::{CrateItemList, FeatureItemList, ItemListStatus};
 
-pub mod backend;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Crates {
@@ -22,20 +21,25 @@ pub struct Table {
     pub entries: Vec<TableEntry>,
 }
 
-impl Into<Vec<CrateItemList>> for crate::backend::Table {
-    fn into(self) -> Vec<CrateItemList> {
+impl From<crate::backend::Table> for Vec<CrateItemList> {
+    fn from(val: crate::backend::Table) -> Self {
         let mut items: Vec<CrateItemList> = vec![];
 
-        self.entries.iter().for_each(|entr| {
-            entr.crates.iter().for_each(|cr| {
+        for entr in val.entries {
+            for krate in entr.crates {
                 items.push(CrateItemList::new(
-                    cr.name.to_owned(),
-                    cr.description.to_owned(),
+                    krate.name.clone(),
+                    krate.description.clone(),
                     ItemListStatus::default(),
-                    cr.features.to_owned(),
-                ))
-            })
-        });
+                    krate.features.clone().map(|features| {
+                        features
+                            .iter()
+                            .map(|feat| FeatureItemList::new(feat.clone()))
+                            .collect()
+                    }),
+                ));
+            }
+        }
 
         items
     }

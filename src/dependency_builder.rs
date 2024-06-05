@@ -1,8 +1,11 @@
+use std::fmt::Write;
 use std::{io, ops::Deref, process::Command};
+
+use crate::view::widgets::{CrateItemList, ItemListStatus};
 
 pub mod dependency_builder;
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CrateToAdd {
     pub crate_name: String,
     pub features: Option<Vec<String>>,
@@ -12,6 +15,26 @@ impl Deref for CrateToAdd {
     type Target = CrateToAdd;
     fn deref(&self) -> &Self::Target {
         self
+    }
+}
+
+impl From<CrateItemList> for CrateToAdd {
+    fn from(value: CrateItemList) -> Self {
+        Self {
+            crate_name: value.name,
+            features: value.features.map(|features| {
+                features
+                    .iter()
+                    .filter_map(|feature_item| {
+                        if feature_item.status == ItemListStatus::Selected {
+                            Some(feature_item.name.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            }),
+        }
     }
 }
 
@@ -27,7 +50,11 @@ impl DependenciesBuilder {
     pub fn add_dependencies(&self) -> io::Result<()> {
         for dependency in self.crates_to_add.clone() {
             if let Some(features) = dependency.features {
-                let features: String = features.iter().map(|feat| format!(" {} ", feat)).collect();
+                let features: String =
+                    features.iter().fold(String::new(), |mut output, feature| {
+                        let _ = write!(output, " {feature} ");
+                        output
+                    });
                 Command::new("cargo")
                     .arg("add")
                     .arg(dependency.crate_name)

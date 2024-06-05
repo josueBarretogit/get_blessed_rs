@@ -1,6 +1,6 @@
 [package]
 name = "get-blessed"
-version = "0.1.3"
+version = "0.2.0"
 edition = "2021"
 authors = ["Josue <josuebarretogit@gmail.com>"]
 readme = "README.md"
@@ -10,16 +10,20 @@ description = "Terminal tool to get you the best crates for your rust projects w
 keywords = ["cli", "command-line", "developer-tools", "dependencies"]
 categories = ["utilities", "development-tools" , "command-line", "dependencies"]
 license = "MIT"
+exclude = [
+  "public/*"
+]
+
 
 [dependencies]
-reqwest = "0.12.4"
+reqwest = { version = "0.12.4" , features = ["json"]}
 ratatui = { version = "0.26.3", features = ["all-widgets"] }
 color-eyre = "0.6.2"
 crossterm = { version = "0.27.0", features = ["event-stream"] }
 serde = { version = "1.0.200", features = ["derive"] }
 strum = "0.26.2"
 strum_macros = "0.26"
-scraper = "0.19.0"
 open = "5.1.3"
 throbber-widgets-tui = "0.5.0"
 tokio = { version = "1.37.0", features = ["full"] }
+crates_io_api = "0.11.0"

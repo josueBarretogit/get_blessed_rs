@@ -2,9 +2,30 @@
 
 Terminal tool to get you the best crates for your rust projects with a few keybindings, curated by [blessed.rs](https://blessed.rs/crates)
 
-## Showcase 
-![render1716250101340](https://github.com/josueBarretogit/get_blessed_rs/assets/144196149/2969f312-b973-4562-859e-01df5d9f84ed)
+## Motivation
+As you may know, the website blessed.rs compiles the most popular crates that almost any rust project needs, so I decided to make a program that lets you look at those crates and add 
+them to your rust projects right in your terminal. 
 
+## Showcase 
+
+![showcase](./public/showcase.gif)
+
+## Features
+
+
+- Check out a crate documentation pressing `<d>` (Opens a tab in your default web browser)
+- Check out a crate crates.io page pressing `<c>` (Opens a tab in your default web browser)
+- Move between categories with `<Tab>` or `<Shift + Tab>` 
+- Move up and down with either arrow keys or with `<j>` / `<k>`
+- Select the crate you want in your project by pressing `<s>`
+- Select all the crates from a category by pressing `<a>`
+- Select a crate with features by pressing `<f>` (Opens a popup where you can select the features with `<s>`)
+- Add the selected crates to your rust project by pressing `<Enter>`
+  
+![features](./public/features.gif)
+
+
+- After you are done press `<q>` or `<Esc>` to quit 
 
 ## Installation
 
@@ -12,4 +33,8 @@ Terminal tool to get you the best crates for your rust projects with a few keybi
   cargo install get-blessed
 ```
 
-Please feel free to suggest new features or report any bugs / inconsistencies 
+Arch Linux users can install [from the AUR](https://aur.archlinux.org/packages/get-blessed) via `paru -S get-blessed`.
+
+After you are done adding the best crates to your rust project also consider making a .gitignore [add-gitignore-cli](https://crates.io/crates/add-gitignore-cli)
+
+Please feel free to suggest new features or report any bugs / inconsistencies
