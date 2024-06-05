@@ -8,7 +8,7 @@ them to your rust projects right in your terminal.
 
 ## Showcase 
 
-![showcase](https://github.com/josueBarretogit/get_blessed_rs/assets/144196149/74841eda-d0c1-4db1-86b0-03638a622a33)
+![showcase](./public/showcase.gif)
 
 ## Features
 
@@ -22,7 +22,7 @@ them to your rust projects right in your terminal.
 - Select a crate with features by pressing  `<f>` to select its features
 - Add the selected crates to your rust project by pressing `<Enter>`
   
-![features](https://github.com/josueBarretogit/get_blessed_rs/assets/144196149/03d7dfbc-4ae6-4843-8175-c9fd249e99ed)
+![features](./public/features.gif)
 
 
 - After you are done press `<q>` or `<Esc>` to quit 

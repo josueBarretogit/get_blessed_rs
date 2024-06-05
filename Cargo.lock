@@ -405,7 +405,7 @@ dependencies = [
 
 [[package]]
 name = "get-blessed"
-version = "0.1.3"
+version = "0.2.0"
 dependencies = [
  "color-eyre",
  "crates_io_api",
