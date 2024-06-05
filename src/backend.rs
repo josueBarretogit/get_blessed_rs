@@ -2,7 +2,6 @@ use strum::{Display, EnumIter, FromRepr};
 
 use crate::view::widgets::{CrateItemList, FeatureItemList, ItemListStatus};
 
-pub mod backend;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Crates {

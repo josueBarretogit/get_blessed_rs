@@ -36,7 +36,7 @@ impl JsonContentParser {
         let mut clis_crates = Table::default();
         let mut graphics_crates = Table::default();
 
-        page_content.crate_groups.iter().for_each(|group| {
+        for group in &page_content.crate_groups {
             match group.name.trim().to_lowercase().as_str() {
                 "common" => {
                     //extract general table
@@ -72,7 +72,7 @@ impl JsonContentParser {
                 "graphics" => graphics_crates = group.into(),
                 _ => {}
             }
-        });
+        }
 
         Self {
             content: page_content,
@@ -88,19 +88,14 @@ impl JsonContentParser {
             general_crates,
         }
     }
-
-    
-
 }
 
-
-impl ContentParser for JsonContentParser  {
-
- fn get_general_crates(&self) -> Table {
+impl ContentParser for JsonContentParser {
+    fn get_general_crates(&self) -> Table {
         self.general_crates.clone()
     }
 
-     fn get_crates(&self, category: &Categories) -> Table {
+    fn get_crates(&self, category: &Categories) -> Table {
         match category {
             Categories::FFI => self.ffi_crates.clone(),
             Categories::Math => self.math_crates.clone(),
@@ -108,7 +103,7 @@ impl ContentParser for JsonContentParser  {
         }
     }
 
-     fn get_crates_with_sub(&self, category: &CategoriesWithSubCategories) -> Table {
+    fn get_crates_with_sub(&self, category: &CategoriesWithSubCategories) -> Table {
         match category {
             CategoriesWithSubCategories::Clis => self.clis_crates.clone(),
             CategoriesWithSubCategories::Common => self.common_crates.clone(),
@@ -118,5 +113,4 @@ impl ContentParser for JsonContentParser  {
             CategoriesWithSubCategories::Concurrency => self.concurrency_crates.clone(),
         }
     }
-
 }
