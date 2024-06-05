@@ -5,7 +5,10 @@ use ratatui::{
 
 use crate::{
     dependency_builder::CrateToAdd,
-    view::{ui::AppView, widgets::{CategoriesTabs, CrateItemList, FeatureItemList, ItemListStatus}},
+    view::{
+        ui::AppView,
+        widgets::{CategoriesTabs, CrateItemList, FeatureItemList, ItemListStatus},
+    },
 };
 
 pub fn toggle_status_all(dependencies: &mut [CrateItemList]) {
@@ -49,10 +52,7 @@ pub fn toggle_one_dependency(
     }
 }
 
-pub fn toggle_one_feature(
-    current_crate: &mut CrateItemList,
-    features_list_state: &ListState,
-) {
+pub fn toggle_one_feature(current_crate: &mut CrateItemList, features_list_state: &ListState) {
     if let Some((index, current_crate_features)) = features_list_state
         .selected()
         .zip(current_crate.features.as_mut())
@@ -74,17 +74,20 @@ pub fn toggle_one_feature(
     };
 }
 
-pub fn select_crate_if_features_are_selected(app : &mut AppView) {
+pub fn select_crate_if_features_are_selected(app: &mut AppView) {
     if let Some((crate_selected, index_current_crate)) = app.get_current_crate_selected() {
+
+        let current_crate_is_selected = app
+            .dependencies_to_add_list
+            .dependencies_to_add
+            .iter()
+            .any(|crate_to_add| crate_to_add.crate_name == crate_selected.name);
+
         if crate_selected.features.as_ref().is_some_and(|features| {
             features
                 .iter()
                 .any(|feature| feature.status == ItemListStatus::Selected)
-        }) && !app
-            .dependencies_to_add_list
-            .dependencies_to_add
-            .iter()
-            .any(|crate_to_add| crate_to_add.crate_name == crate_selected.name)
+        }) && !current_crate_is_selected
         {
             app.dependencies_to_add_list
                 .dependencies_to_add

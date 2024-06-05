@@ -37,6 +37,9 @@ pub fn update(app: &mut AppView, action: Action) {
     match action {
         Action::ToggleShowFeatures => {
             app.toggle_show_features();
+            //After user closes the popup where they can se the features we check if we can add 
+            //the crate if the user selected at least 1 feature
+            //THe way to do this must be improved since it is really ugly
             if !app.is_showing_features {
                 select_crate_if_features_are_selected(app);
             }
