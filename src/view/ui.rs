@@ -1,14 +1,13 @@
 #![allow(clippy::too_many_lines)]
-use std::{thread::spawn, time::Duration, usize};
-use throbber_widgets_tui::{symbols::throbber, Throbber, ThrobberState};
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use throbber_widgets_tui::{Throbber, ThrobberState};
+use tokio::sync::mpsc::UnboundedSender;
 
 use ratatui::{
     prelude::*,
     symbols::border,
     widgets::{
         block::{Block, Position, Title},
-        Clear, ListState, Paragraph,
+        Clear, ListState,
     },
 };
 
@@ -24,25 +23,21 @@ use crate::{
 };
 
 use super::widgets::{
-    CategoriesTabs, CrateItemList, CratesListWidget, DependenciesListWidget, FeatureItemList,
-    FeaturesWidgetList, FooterInstructions, ItemListStatus, Popup,
+    CategoriesTabs, CrateItemList, CratesListWidget, DependenciesListWidget, FeaturesWidgetList,
+    FooterInstructions, Popup,
 };
 
 pub struct AppView {
     pub action_tx: UnboundedSender<Action>,
     pub dependencies_to_add_list: DependenciesList,
     pub crates_list: CratesList,
-
     pub category_tabs: CategoriesTabs,
-
     is_adding_dependencies: bool,
-
     popup_widget: Popup,
     features: Features,
     loader_state: throbber_widgets_tui::ThrobberState,
     pub exit: bool,
     pub is_showing_features: bool,
-
     pub categories_list_state: ListState,
     pub general_crates: Vec<CrateItemList>,
     pub math_crates: Vec<CrateItemList>,
@@ -674,80 +669,48 @@ impl AppView {
                 CategoriesTabs::General => {
                     let current_crate = &mut self.general_crates[index_current_crate_selected];
 
-                    toggle_one_feature(
-                        current_crate,
-                        &self.features.state,
-                    );
-
-                    
+                    toggle_one_feature(current_crate, &self.features.state);
                 }
                 CategoriesTabs::Common => {
                     let current_crate = &mut self.common_crates[index_current_crate_selected];
-                    toggle_one_feature(
-                        current_crate,
-                        &self.features.state,
-                    );
+                    toggle_one_feature(current_crate, &self.features.state);
                 }
                 CategoriesTabs::FFI => {
                     let current_crate = &mut self.ffi_crates[index_current_crate_selected];
-                    toggle_one_feature(
-                        current_crate,
-                        &self.features.state,
-                    );
+                    toggle_one_feature(current_crate, &self.features.state);
                 }
 
                 CategoriesTabs::Math => {
                     let current_crate = &mut self.math_crates[index_current_crate_selected];
-                    toggle_one_feature(
-                        current_crate,
-                        &self.features.state,
-                    );
+                    toggle_one_feature(current_crate, &self.features.state);
                 }
 
                 CategoriesTabs::Clis => {
                     let current_crate = &mut self.clis_crates[index_current_crate_selected];
-                    toggle_one_feature(
-                        current_crate,
-                        &self.features.state,
-                    );
+                    toggle_one_feature(current_crate, &self.features.state);
                 }
 
                 CategoriesTabs::Graphics => {
                     let current_crate = &mut self.graphics_crates[index_current_crate_selected];
-                    toggle_one_feature(
-                        current_crate,
-                        &self.features.state,
-                    );
+                    toggle_one_feature(current_crate, &self.features.state);
                 }
 
                 CategoriesTabs::Databases => {
                     let current_crate = &mut self.database_crates[index_current_crate_selected];
-                    toggle_one_feature(
-                        current_crate,
-                        &self.features.state,
-                    );
+                    toggle_one_feature(current_crate, &self.features.state);
                 }
                 CategoriesTabs::Networking => {
                     let current_crate = &mut self.networking_crates[index_current_crate_selected];
-                    toggle_one_feature(
-                        current_crate,
-                        &self.features.state,
-                    );
+                    toggle_one_feature(current_crate, &self.features.state);
                 }
                 CategoriesTabs::Concurrency => {
                     let current_crate = &mut self.concurrency_crates[index_current_crate_selected];
-                    toggle_one_feature(
-                        current_crate,
-                        &self.features.state,
-                    );
+                    toggle_one_feature(current_crate, &self.features.state);
                 }
 
                 CategoriesTabs::Cryptography => {
                     let current_crate = &mut self.cryptography_crates[index_current_crate_selected];
-                    toggle_one_feature(
-                        current_crate,
-                        &self.features.state,
-                    );
+                    toggle_one_feature(current_crate, &self.features.state);
                 }
             }
         }

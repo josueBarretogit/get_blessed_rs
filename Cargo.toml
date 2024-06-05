@@ -10,8 +10,6 @@ description = "Terminal tool to get you the best crates for your rust projects w
 keywords = ["cli", "command-line", "developer-tools", "dependencies"]
 categories = ["utilities", "development-tools" , "command-line", "dependencies"]
 license = "MIT"
-
-[package]
 exclude = [
   "public/*"
 ]

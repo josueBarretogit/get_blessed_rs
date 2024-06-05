@@ -1,4 +1,4 @@
-use core::{alloc, panic};
+use core::{panic};
 use std::sync::Arc;
 use std::{error::Error, time::Duration};
 
@@ -7,9 +7,8 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
 use crate::content_parser::jsoncontentparser::JsonContentParser;
-use crate::dependency_builder::CrateToAdd;
 use crate::utils::select_crate_if_features_are_selected;
-use crate::view::widgets::{CategoriesTabs, CrateItemList, FeatureItemList, ItemListStatus};
+use crate::view::widgets::{CategoriesTabs, CrateItemList, FeatureItemList};
 use crate::{dependency_builder::DependenciesBuilder, view::ui::AppView};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
