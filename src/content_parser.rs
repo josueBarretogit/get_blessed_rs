@@ -27,7 +27,7 @@ impl From<&Group> for Table {
                             .notes
                             .clone()
                             .unwrap_or("No description".to_string()),
-                        features: None,
+                        features: None
                     });
                 }
 

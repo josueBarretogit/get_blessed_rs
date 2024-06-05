@@ -1,6 +1,6 @@
 use strum::{Display, EnumIter, FromRepr};
 
-use crate::view::widgets::{CrateItemList, ItemListStatus};
+use crate::view::widgets::{CrateItemList, FeatureItemList, ItemListStatus};
 
 pub mod backend;
 
@@ -26,16 +26,21 @@ impl From<crate::backend::Table> for Vec<CrateItemList> {
     fn from(val: crate::backend::Table) -> Self {
         let mut items: Vec<CrateItemList> = vec![];
 
-        val.entries.iter().for_each(|entr| {
-            entr.crates.iter().for_each(|cr| {
+        for entr in val.entries {
+            for krate in entr.crates {
                 items.push(CrateItemList::new(
-                    cr.name.clone(),
-                    cr.description.clone(),
+                    krate.name.clone(),
+                    krate.description.clone(),
                     ItemListStatus::default(),
-                    cr.features.clone(),
+                    krate.features.clone().map(|features| {
+                        features
+                            .iter()
+                            .map(|feat| FeatureItemList::new(feat.clone()))
+                            .collect()
+                    }),
                 ));
-            });
-        });
+            }
+        }
 
         items
     }
