@@ -6,7 +6,7 @@ use crossterm::event::{KeyCode, KeyEventKind};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
-use crate::content_parser::content_parser::JsonContentParser;
+use crate::content_parser::jsoncontentparser::JsonContentParser;
 use crate::dependency_builder::CrateToAdd;
 use crate::utils::select_crate_if_features_are_selected;
 use crate::view::widgets::{CategoriesTabs, CrateItemList, FeatureItemList, ItemListStatus};
