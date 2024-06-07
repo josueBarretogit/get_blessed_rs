@@ -7,7 +7,7 @@ use crate::{
     dependency_builder::CrateToAdd,
     view::{
         app::App,
-        widgets::{CategoriesTabs, CrateItemList, ItemListStatus},
+        widgets::{CategoriesTabs, CrateItemList, FeatureItemList, ItemListStatus},
     },
 };
 
@@ -142,4 +142,15 @@ pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         Constraint::Percentage((100 - percent_x) / 2),
     ])
     .split(popup_layout[1])[1]
+}
+
+pub fn load_features(
+    crates_list: &mut [CrateItemList],
+    index_crate_to_update: usize,
+    features: Option<Vec<FeatureItemList>>,
+) {
+    crates_list[index_crate_to_update].is_loading = false;
+    if let Some(feat) = features {
+        crates_list[index_crate_to_update].features = Some(feat);
+    }
 }

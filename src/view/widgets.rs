@@ -1,12 +1,12 @@
-use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
 use ratatui::{
     prelude::*,
     style::{palette::tailwind, Style},
     widgets::{
         block::{Block, Padding, Position, Title},
-        HighlightSpacing, List, ListDirection, ListItem, ListState,
+        HighlightSpacing, List, ListDirection, ListItem, ListState, Paragraph,
     },
 };
+use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
 use throbber_widgets_tui::{Throbber, ThrobberState};
 
 use crate::dependency_builder::CrateToAdd;
@@ -94,20 +94,17 @@ impl StatefulWidget for FeaturesWidgetList {
             horizontal: 1,
         });
 
-        let features = if self.features.is_some() {
-            self.features.unwrap()
-        } else {
-            vec![FeatureItemList::new(
-                "Fetching features, please wait a moment".to_string(),
-            )]
+        match self.features {
+            Some(features) => {
+                let features_list = List::new(features)
+                    .highlight_style(Style::default().blue())
+                    .highlight_symbol(">> ")
+                    .direction(ListDirection::TopToBottom);
+
+                StatefulWidget::render(features_list, inner_area, buf, state);
+            }
+            None => Paragraph::new("This crate has no features").render(inner_area, buf),
         };
-
-        let features_list = List::new(features)
-            .highlight_style(Style::default().blue())
-            .highlight_symbol(">> ")
-            .direction(ListDirection::TopToBottom);
-
-        StatefulWidget::render(features_list, inner_area, buf, state);
     }
 }
 

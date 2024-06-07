@@ -1,4 +1,4 @@
-use core::{panic};
+use core::panic;
 use std::sync::Arc;
 use std::{error::Error, time::Duration};
 
@@ -7,14 +7,14 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
 use crate::content_parser::jsoncontentparser::JsonContentParser;
-use crate::utils::select_crate_if_features_are_selected;
+use crate::utils::{load_features, select_crate_if_features_are_selected};
 use crate::view::widgets::{CategoriesTabs, CrateItemList, FeatureItemList};
 use crate::{dependency_builder::DependenciesBuilder, view::app::App};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Action {
     FetchFeatures,
-    UpdateFeatures(CategoriesTabs, Vec<FeatureItemList>, usize),
+    UpdateFeatures(CategoriesTabs, Option<Vec<FeatureItemList>>, usize),
     Tick,
     ToggleShowFeatures,
     ShowLoadingAddingDeps,
@@ -36,7 +36,7 @@ pub fn update(app: &mut App, action: Action) {
     match action {
         Action::ToggleShowFeatures => {
             app.toggle_show_features();
-            //After user closes the popup where they can se the features we check if we can add 
+            //After user closes the popup where they can se the features we check if we can add
             //the crate if the user selected at least 1 feature
             //THe way to do this must be improved since it is really ugly
             if !app.is_showing_features {
@@ -198,46 +198,39 @@ pub fn update(app: &mut App, action: Action) {
 
         Action::UpdateFeatures(category, features, crate_index_to_update) => match category {
             CategoriesTabs::General => {
-                app.general_crates[crate_index_to_update].features = Some(features);
-                app.general_crates[crate_index_to_update].is_loading = false;
+                load_features(&mut app.general_crates, crate_index_to_update, features);
             }
             CategoriesTabs::Common => {
-                app.common_crates[crate_index_to_update].features = Some(features);
-                app.common_crates[crate_index_to_update].is_loading = false;
+                load_features(&mut app.common_crates, crate_index_to_update, features);
             }
             CategoriesTabs::FFI => {
-                app.ffi_crates[crate_index_to_update].features = Some(features);
-                app.ffi_crates[crate_index_to_update].is_loading = false;
+                load_features(&mut app.ffi_crates, crate_index_to_update, features);
             }
+
             CategoriesTabs::Math => {
-                app.math_crates[crate_index_to_update].features = Some(features);
-                app.math_crates[crate_index_to_update].is_loading = false;
+                load_features(&mut app.math_crates, crate_index_to_update, features);
             }
             CategoriesTabs::Clis => {
-                app.clis_crates[crate_index_to_update].features = Some(features);
-                app.clis_crates[crate_index_to_update].is_loading = false;
+                load_features(&mut app.clis_crates, crate_index_to_update, features);
             }
             CategoriesTabs::Graphics => {
-                app.graphics_crates[crate_index_to_update].features = Some(features);
-                app.graphics_crates[crate_index_to_update].is_loading = false;
+                load_features(&mut app.graphics_crates, crate_index_to_update, features);
             }
             CategoriesTabs::Databases => {
-                app.database_crates[crate_index_to_update].features = Some(features);
-                app.database_crates[crate_index_to_update].is_loading = false;
+                load_features(&mut app.database_crates, crate_index_to_update, features);
             }
             CategoriesTabs::Networking => {
-                app.networking_crates[crate_index_to_update].features = Some(features);
-                app.networking_crates[crate_index_to_update].is_loading = false;
+                load_features(&mut app.networking_crates, crate_index_to_update, features);
             }
 
             CategoriesTabs::Concurrency => {
-                app.concurrency_crates[crate_index_to_update].features = Some(features);
-                app.concurrency_crates[crate_index_to_update].is_loading = false;
+                load_features(&mut app.concurrency_crates, crate_index_to_update, features);
             }
-            CategoriesTabs::Cryptography => {
-                app.cryptography_crates[crate_index_to_update].features = Some(features);
-                app.cryptography_crates[crate_index_to_update].is_loading = false;
-            }
+            CategoriesTabs::Cryptography => load_features(
+                &mut app.cryptography_crates,
+                crate_index_to_update,
+                features,
+            ),
         },
 
         Action::Quit => app.exit(),
@@ -329,16 +322,20 @@ fn fetch_features(
             let response = client.get_crate(&crate_name).await;
             if let Ok(information) = response {
                 if let Some(latest) = information.versions.first() {
-                    tx.send(Action::UpdateFeatures(
-                        category,
-                        latest
-                            .features
-                            .clone()
-                            .into_keys()
-                            .map(FeatureItemList::new)
-                            .collect(),
-                        index,
-                    )).unwrap_or(());
+                    let latest: Vec<FeatureItemList> = latest
+                        .features
+                        .clone()
+                        .into_keys()
+                        .map(FeatureItemList::new)
+                        .collect();
+
+                    if !latest.is_empty() {
+                        tx.send(Action::UpdateFeatures(category, Some(latest), index))
+                            .unwrap_or(());
+                    } else {
+                        tx.send(Action::UpdateFeatures(category, None, index))
+                            .unwrap_or(());
+                    }
                 };
             };
         });
