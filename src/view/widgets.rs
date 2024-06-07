@@ -1,5 +1,4 @@
 use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
-
 use ratatui::{
     prelude::*,
     style::{palette::tailwind, Style},

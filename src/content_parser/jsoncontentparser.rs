@@ -1,14 +1,13 @@
 use crate::{
     backend::{Categories, CategoriesWithSubCategories, Table},
-    scraper::scraper::{scrape_site, CratesData, Group},
+    scraper::{scrape_site, Group},
 };
 
 use super::ContentParser;
 
+#[allow(clippy::struct_field_names)]
 #[derive(Debug)]
 pub struct JsonContentParser {
-    pub content: CratesData,
-
     general_crates: Table,
     math_crates: Table,
     ffi_crates: Table,
@@ -75,8 +74,7 @@ impl JsonContentParser {
         }
 
         Self {
-            content: page_content,
-            graphics_crates,
+            general_crates,
             math_crates,
             ffi_crates,
             cryptography_crates,
@@ -85,7 +83,7 @@ impl JsonContentParser {
             networking_crates,
             database_crates,
             clis_crates,
-            general_crates,
+            graphics_crates,
         }
     }
 }

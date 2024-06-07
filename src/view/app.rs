@@ -27,15 +27,11 @@ use super::widgets::{
     FooterInstructions, Popup,
 };
 
-pub struct AppView {
+pub struct App {
     pub action_tx: UnboundedSender<Action>,
     pub dependencies_to_add_list: DependenciesList,
     pub crates_list: CratesList,
     pub category_tabs: CategoriesTabs,
-    is_adding_dependencies: bool,
-    popup_widget: Popup,
-    features: Features,
-    loader_state: throbber_widgets_tui::ThrobberState,
     pub exit: bool,
     pub is_showing_features: bool,
     pub categories_list_state: ListState,
@@ -49,6 +45,10 @@ pub struct AppView {
     pub database_crates: Vec<CrateItemList>,
     pub clis_crates: Vec<CrateItemList>,
     pub graphics_crates: Vec<CrateItemList>,
+    is_adding_dependencies: bool,
+    popup_widget: Popup,
+    features: Features,
+    loader_state: throbber_widgets_tui::ThrobberState,
 }
 
 #[derive(Default)]
@@ -78,7 +78,7 @@ impl DependenciesList {
     }
 }
 
-impl Widget for &mut AppView {
+impl Widget for &mut App {
     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer)
     where
         Self: Sized,
@@ -106,7 +106,7 @@ impl Widget for &mut AppView {
 
         self.render_dependencies_list(dependencies_to_add_area, buf);
 
-        self.render_footer_instructions(footer_area, buf);
+        App::render_footer_instructions(footer_area, buf);
 
         if self.is_showing_features {
             self.render_features_popup(area, buf);
@@ -125,7 +125,7 @@ impl Widget for &mut AppView {
     }
 }
 
-impl AppView {
+impl App {
     pub fn setup(action_tx: UnboundedSender<Action>, parser: &dyn ContentParser) -> Self {
         let page_contents = parser;
 
@@ -139,6 +139,7 @@ impl AppView {
 
         let math_crates: Vec<CrateItemList> = page_contents.get_crates(&Categories::Math).into();
         let ffi_crates: Vec<CrateItemList> = page_contents.get_crates(&Categories::FFI).into();
+
         let cryptography_crates: Vec<CrateItemList> =
             page_contents.get_crates(&Categories::Cryptography).into();
 
@@ -166,11 +167,14 @@ impl AppView {
             dependencies_to_add_list: DependenciesList::default(),
             crates_list: CratesList::default(),
             category_tabs: CategoriesTabs::default(),
-            is_adding_dependencies: false,
             loader_state: ThrobberState::default(),
-
+            categories_list_state: list_state,
+            exit: false,
+            is_showing_features: false,
+            is_adding_dependencies: false,
+            popup_widget: Popup::default(),
+            features: Features::default(),
             general_crates,
-
             math_crates,
             ffi_crates,
             cryptography_crates,
@@ -180,14 +184,6 @@ impl AppView {
             database_crates,
             clis_crates,
             graphics_crates,
-
-            categories_list_state: list_state,
-
-            exit: false,
-            is_showing_features: false,
-
-            popup_widget: Popup::default(),
-            features: Features::default(),
         }
     }
 
@@ -382,7 +378,7 @@ impl AppView {
         );
     }
 
-    fn render_footer_instructions(&mut self, area: Rect, buf: &mut Buffer) {
+    fn render_footer_instructions(area: Rect, buf: &mut Buffer) {
         FooterInstructions::new(vec![
             " Next category ".into(),
             "<Tab>".blue(),

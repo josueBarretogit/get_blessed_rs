@@ -1,9 +1,9 @@
+/// This module's job is to add de crate or dependencies to the user's project
 use std::fmt::Write;
 use std::{io, ops::Deref, process::Command};
-
 use crate::view::widgets::{CrateItemList, ItemListStatus};
 
-pub mod dependency_builder;
+
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CrateToAdd {

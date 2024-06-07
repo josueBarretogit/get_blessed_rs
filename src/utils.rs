@@ -6,7 +6,7 @@ use ratatui::{
 use crate::{
     dependency_builder::CrateToAdd,
     view::{
-        ui::AppView,
+        app::App,
         widgets::{CategoriesTabs, CrateItemList, ItemListStatus},
     },
 };
@@ -74,7 +74,7 @@ pub fn toggle_one_feature(current_crate: &mut CrateItemList, features_list_state
     };
 }
 
-pub fn select_crate_if_features_are_selected(app: &mut AppView) {
+pub fn select_crate_if_features_are_selected(app: &mut App) {
     if let Some((crate_selected, index_current_crate)) = app.get_current_crate_selected() {
         let current_crate_is_selected = app
             .dependencies_to_add_list

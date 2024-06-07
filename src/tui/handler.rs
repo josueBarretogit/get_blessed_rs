@@ -2,14 +2,14 @@ use core::{panic};
 use std::sync::Arc;
 use std::{error::Error, time::Duration};
 
-use crossterm::event::{KeyCode, KeyEventKind};
+use crossterm::event::{self, poll, Event, KeyCode, KeyEventKind};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
 use crate::content_parser::jsoncontentparser::JsonContentParser;
 use crate::utils::select_crate_if_features_are_selected;
 use crate::view::widgets::{CategoriesTabs, CrateItemList, FeatureItemList};
-use crate::{dependency_builder::DependenciesBuilder, view::ui::AppView};
+use crate::{dependency_builder::DependenciesBuilder, view::app::App};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Action {
@@ -32,7 +32,7 @@ pub enum Action {
 }
 
 #[allow(clippy::too_many_lines)]
-pub fn update(app: &mut AppView, action: Action) {
+pub fn update(app: &mut App, action: Action) {
     match action {
         Action::ToggleShowFeatures => {
             app.toggle_show_features();
@@ -248,18 +248,16 @@ pub fn handle_event(tx: UnboundedSender<Action>) -> tokio::task::JoinHandle<()> 
 
     tokio::spawn(async move {
         loop {
-            let action = if crossterm::event::poll(tick_rate).unwrap() {
-                if let crossterm::event::Event::Key(key) = crossterm::event::read().unwrap() {
+            let action = if poll(tick_rate).unwrap() {
+                if let Event::Key(key) = event::read().unwrap() {
                     if key.kind == KeyEventKind::Press {
                         match key.code {
                             KeyCode::Enter => Action::ShowLoadingAddingDeps,
-
                             KeyCode::Char('q') | KeyCode::Esc => Action::Quit,
                             KeyCode::Tab => Action::ScrollNextCategory,
                             KeyCode::BackTab => Action::ScrollPreviousCategory,
                             KeyCode::Down | KeyCode::Char('j') => Action::ScrollDown,
                             KeyCode::Up | KeyCode::Char('k') => Action::ScrollUp,
-
                             KeyCode::Char('a') => Action::ToggleAll,
                             KeyCode::Char('s') => Action::ToggleOne,
                             KeyCode::Char('d') => Action::CheckDocs,
@@ -291,7 +289,7 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
 
     let json_parser = JsonContentParser::parse_content().await;
 
-    let mut app = AppView::setup(action_tx.clone(), &json_parser);
+    let mut app = App::setup(action_tx.clone(), &json_parser);
 
     let task = handle_event(app.action_tx.clone());
 

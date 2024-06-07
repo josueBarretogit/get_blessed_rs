@@ -1,5 +1,6 @@
 use crate::backend::{Categories, CategoriesWithSubCategories, Crates, Table, TableEntry};
-use crate::scraper::scraper::Group;
+use crate::scraper::Group;
+
 
 pub mod jsoncontentparser;
 

@@ -1,7 +1,7 @@
 use strum::{Display, EnumIter, FromRepr};
-
 use crate::view::widgets::{CrateItemList, FeatureItemList, ItemListStatus};
 
+///This struct represent the data as seen in the actual page
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Crates {
