@@ -3,7 +3,7 @@ use ratatui::{
     style::{palette::tailwind, Style},
     widgets::{
         block::{Block, Padding, Position, Title},
-        HighlightSpacing, List, ListDirection, ListItem, ListState, Paragraph,
+        HighlightSpacing, List, ListDirection, ListItem, ListState, Paragraph, StatefulWidgetRef,
     },
 };
 use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
@@ -144,22 +144,21 @@ pub struct CrateItemList {
 }
 
 #[derive(Clone, Default)]
-pub struct DependenciesListWidget {
-    pub dependencies: Vec<CrateToAdd>,
+pub struct CratesToAddListWidget {
+    pub crates: Vec<CrateToAdd>,
 }
 
-impl DependenciesListWidget {
-    pub fn new(dependencies: Vec<CrateToAdd>) -> Self {
-        Self { dependencies }
+impl CratesToAddListWidget {
+    pub fn new(crates: Vec<CrateToAdd>) -> Self {
+        Self { crates }
     }
 }
 
-impl StatefulWidget for DependenciesListWidget {
+impl StatefulWidgetRef for CratesToAddListWidget {
     type State = ListState;
-
-    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+    fn render_ref(&self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let items: Vec<Line<'_>> = self
-            .dependencies
+            .crates
             .iter()
             .cloned()
             .map(|dep| Line::from(vec![dep.crate_name.into(), " ✓ ".blue()]))
@@ -220,12 +219,12 @@ impl From<CrateItemList> for ListItem<'_> {
     }
 }
 
-impl StatefulWidget for CratesListWidget {
+impl StatefulWidgetRef for CratesListWidget {
     type State = ListState;
-    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+    fn render_ref(&self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let block = Block::default().padding(Padding::uniform(1));
 
-        let list = List::new(self.crates)
+        let list = List::new(self.crates.clone())
             .block(block)
             .highlight_style(Style::default())
             .highlight_symbol(">> ")

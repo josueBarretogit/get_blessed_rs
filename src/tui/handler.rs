@@ -104,7 +104,7 @@ pub fn update(app: &mut App, action: Action) {
             let tx = app.action_tx.clone();
 
             let deps_builder =
-                DependenciesBuilder::new(app.crates_to_add.crate_to_add.clone());
+                DependenciesBuilder::new(app.crates_to_add.widget.crates.clone());
 
             tokio::spawn(async move {
                 match deps_builder.add_dependencies() {

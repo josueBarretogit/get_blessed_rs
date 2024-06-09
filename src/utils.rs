@@ -78,7 +78,8 @@ pub fn select_crate_if_features_are_selected(app: &mut App) {
     if let Some((crate_selected, index_current_crate)) = app.get_current_crate_selected() {
         let current_crate_is_selected = app
             .crates_to_add
-            .crate_to_add
+            .widget
+            .crates
             .iter()
             .any(|crate_to_add| crate_to_add.crate_name == crate_selected.name);
 
@@ -89,9 +90,10 @@ pub fn select_crate_if_features_are_selected(app: &mut App) {
         }) && !current_crate_is_selected
         {
             app.crates_to_add
-                .crate_to_add
+                .widget
+                .crates
                 .push(CrateToAdd::from(crate_selected));
-            match app.crate_categories {
+            match app.crate_categories.widget {
                 CategoriesWidget::General => {
                     app.general_crates[index_current_crate].status = ItemListStatus::Selected;
                 }
