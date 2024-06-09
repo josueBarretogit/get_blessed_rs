@@ -7,7 +7,7 @@ use crate::{
     dependency_builder::CrateToAdd,
     view::{
         app::App,
-        widgets::{CategoriesTabs, CrateItemList, FeatureItemList, ItemListStatus},
+        widgets::{CategoriesWidget, CrateItemList, FeatureItemList, ItemListStatus},
     },
 };
 
@@ -77,8 +77,8 @@ pub fn toggle_one_feature(current_crate: &mut CrateItemList, features_list_state
 pub fn select_crate_if_features_are_selected(app: &mut App) {
     if let Some((crate_selected, index_current_crate)) = app.get_current_crate_selected() {
         let current_crate_is_selected = app
-            .dependencies_to_add_list
-            .dependencies_to_add
+            .crates_to_add
+            .crate_to_add
             .iter()
             .any(|crate_to_add| crate_to_add.crate_name == crate_selected.name);
 
@@ -88,38 +88,38 @@ pub fn select_crate_if_features_are_selected(app: &mut App) {
                 .any(|feature| feature.status == ItemListStatus::Selected)
         }) && !current_crate_is_selected
         {
-            app.dependencies_to_add_list
-                .dependencies_to_add
+            app.crates_to_add
+                .crate_to_add
                 .push(CrateToAdd::from(crate_selected));
-            match app.category_tabs {
-                CategoriesTabs::General => {
+            match app.crate_categories {
+                CategoriesWidget::General => {
                     app.general_crates[index_current_crate].status = ItemListStatus::Selected;
                 }
-                CategoriesTabs::Common => {
+                CategoriesWidget::Common => {
                     app.common_crates[index_current_crate].status = ItemListStatus::Selected;
                 }
-                CategoriesTabs::FFI => {
+                CategoriesWidget::FFI => {
                     app.ffi_crates[index_current_crate].status = ItemListStatus::Selected;
                 }
-                CategoriesTabs::Math => {
+                CategoriesWidget::Math => {
                     app.math_crates[index_current_crate].status = ItemListStatus::Selected;
                 }
-                CategoriesTabs::Clis => {
+                CategoriesWidget::Clis => {
                     app.clis_crates[index_current_crate].status = ItemListStatus::Selected;
                 }
-                CategoriesTabs::Graphics => {
+                CategoriesWidget::Graphics => {
                     app.graphics_crates[index_current_crate].status = ItemListStatus::Selected;
                 }
-                CategoriesTabs::Databases => {
+                CategoriesWidget::Databases => {
                     app.database_crates[index_current_crate].status = ItemListStatus::Selected;
                 }
-                CategoriesTabs::Networking => {
+                CategoriesWidget::Networking => {
                     app.networking_crates[index_current_crate].status = ItemListStatus::Selected;
                 }
-                CategoriesTabs::Concurrency => {
+                CategoriesWidget::Concurrency => {
                     app.concurrency_crates[index_current_crate].status = ItemListStatus::Selected;
                 }
-                CategoriesTabs::Cryptography => {
+                CategoriesWidget::Cryptography => {
                     app.cryptography_crates[index_current_crate].status = ItemListStatus::Selected;
                 }
             }

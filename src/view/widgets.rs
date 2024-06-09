@@ -247,7 +247,7 @@ impl CratesListWidget {
 #[derive(
     Default, Clone, Copy, Display, FromRepr, EnumIter, PartialEq, Eq, PartialOrd, Ord, Debug,
 )]
-pub enum CategoriesTabs {
+pub enum CategoriesWidget {
     #[strum(to_string = "General")]
     #[default]
     General,
@@ -280,7 +280,7 @@ pub enum CategoriesTabs {
 }
 
 //Heavy use of unwrap here, this is infalle, I think
-impl CategoriesTabs {
+impl CategoriesWidget {
     pub fn next(self) -> Self {
         let current_index = self as usize;
         let previous_index = current_index.saturating_add(1);
@@ -298,11 +298,11 @@ impl CategoriesTabs {
     }
 }
 
-impl StatefulWidget for CategoriesTabs {
+impl StatefulWidget for CategoriesWidget {
     type State = ListState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let categories: Vec<String> = CategoriesTabs::iter()
+        let categories: Vec<String> = CategoriesWidget::iter()
             .map(|category| format!("{category}"))
             .collect();
 

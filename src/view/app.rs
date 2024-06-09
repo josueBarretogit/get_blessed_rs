@@ -23,18 +23,17 @@ use crate::{
 };
 
 use super::widgets::{
-    CategoriesTabs, CrateItemList, CratesListWidget, DependenciesListWidget, FeaturesWidgetList,
+    CategoriesWidget, CrateItemList, CratesListWidget, DependenciesListWidget, FeaturesWidgetList,
     FooterInstructions, Popup,
 };
 
 pub struct App {
     pub action_tx: UnboundedSender<Action>,
-    pub dependencies_to_add_list: DependenciesList,
+    pub crates_to_add: CrateToAddList,
     pub crates_list: CratesList,
-    pub category_tabs: CategoriesTabs,
+    pub crate_categories: CategoriesList,
     pub exit: bool,
     pub is_showing_features: bool,
-    pub categories_list_state: ListState,
     pub general_crates: Vec<CrateItemList>,
     pub math_crates: Vec<CrateItemList>,
     pub ffi_crates: Vec<CrateItemList>,
@@ -57,22 +56,31 @@ pub struct Features {
     state: ListState,
 }
 
+///This struct holds the current list of crates displayed
 #[derive(Default)]
 pub struct CratesList {
     crates_widget_list: CratesListWidget,
     state: ListState,
 }
 
+///This struct holds the list of crates to be added to user's project
 #[derive(Default, Clone)]
-pub struct DependenciesList {
-    pub dependencies_to_add: Vec<CrateToAdd>,
+pub struct CrateToAddList {
+    pub crate_to_add: Vec<CrateToAdd>,
     pub state: ListState,
 }
 
-impl DependenciesList {
+///This struct holds the list of crates to be added to user's project
+#[derive(Default, Clone)]
+pub struct CategoriesList {
+    pub widget: CategoriesWidget,
+    pub state: ListState,
+}
+
+impl CrateToAddList {
     pub const fn new(state: ListState, dependencies_to_add: Vec<CrateToAdd>) -> Self {
         Self {
-            dependencies_to_add,
+            crate_to_add: dependencies_to_add,
             state,
         }
     }
@@ -164,11 +172,13 @@ impl App {
 
         Self {
             action_tx,
-            dependencies_to_add_list: DependenciesList::default(),
+            crates_to_add: CrateToAddList::default(),
             crates_list: CratesList::default(),
-            category_tabs: CategoriesTabs::default(),
+            crate_categories: CategoriesList {
+                widget: CategoriesWidget::default(),
+                state: list_state,
+            },
             loader_state: ThrobberState::default(),
-            categories_list_state: list_state,
             exit: false,
             is_showing_features: false,
             is_adding_dependencies: false,
@@ -197,18 +207,18 @@ impl App {
 
     pub fn next_tab(&mut self) {
         self.crates_list.state.select(Some(0));
-        self.category_tabs = self.category_tabs.next();
+        self.crate_categories = self.crate_categories.next();
 
         self.categories_list_state
-            .select(Some(self.category_tabs as usize));
+            .select(Some(self.crate_categories as usize));
     }
 
     pub fn previos_tab(&mut self) {
         self.crates_list.state.select(Some(0));
-        self.category_tabs = self.category_tabs.previous();
+        self.crate_categories = self.crate_categories.previous();
 
         self.categories_list_state
-            .select(Some(self.category_tabs as usize));
+            .select(Some(self.crate_categories as usize));
     }
 
     pub fn render_categories_list(&mut self, area: Rect, buf: &mut Buffer) {
@@ -222,7 +232,7 @@ impl App {
         });
 
         StatefulWidget::render(
-            self.category_tabs,
+            self.crate_categories,
             margin,
             buf,
             &mut self.categories_list_state,
@@ -262,8 +272,8 @@ impl App {
     }
 
     fn render_crates_list(&mut self, area: Rect, buf: &mut Buffer) {
-        match self.category_tabs {
-            CategoriesTabs::General => {
+        match self.crate_categories {
+            CategoriesWidget::General => {
                 self.crates_list.crates_widget_list = CratesListWidget::new(&self.general_crates);
 
                 StatefulWidget::render(
@@ -273,7 +283,7 @@ impl App {
                     &mut self.crates_list.state,
                 );
             }
-            CategoriesTabs::Graphics => {
+            CategoriesWidget::Graphics => {
                 self.crates_list.crates_widget_list = CratesListWidget::new(&self.graphics_crates);
 
                 StatefulWidget::render(
@@ -283,7 +293,7 @@ impl App {
                     &mut self.crates_list.state,
                 );
             }
-            CategoriesTabs::Concurrency => {
+            CategoriesWidget::Concurrency => {
                 self.crates_list.crates_widget_list =
                     CratesListWidget::new(&self.concurrency_crates);
                 StatefulWidget::render(
@@ -293,7 +303,7 @@ impl App {
                     &mut self.crates_list.state,
                 );
             }
-            CategoriesTabs::Clis => {
+            CategoriesWidget::Clis => {
                 self.crates_list.crates_widget_list = CratesListWidget::new(&self.clis_crates);
 
                 StatefulWidget::render(
@@ -303,7 +313,7 @@ impl App {
                     &mut self.crates_list.state,
                 );
             }
-            CategoriesTabs::FFI => {
+            CategoriesWidget::FFI => {
                 self.crates_list.crates_widget_list = CratesListWidget::new(&self.ffi_crates);
 
                 StatefulWidget::render(
@@ -313,7 +323,7 @@ impl App {
                     &mut self.crates_list.state,
                 );
             }
-            CategoriesTabs::Math => {
+            CategoriesWidget::Math => {
                 self.crates_list.crates_widget_list = CratesListWidget::new(&self.math_crates);
 
                 StatefulWidget::render(
@@ -324,7 +334,7 @@ impl App {
                 );
             }
 
-            CategoriesTabs::Common => {
+            CategoriesWidget::Common => {
                 self.crates_list.crates_widget_list = CratesListWidget::new(&self.common_crates);
 
                 StatefulWidget::render(
@@ -334,7 +344,7 @@ impl App {
                     &mut self.crates_list.state,
                 );
             }
-            CategoriesTabs::Databases => {
+            CategoriesWidget::Databases => {
                 self.crates_list.crates_widget_list = CratesListWidget::new(&self.database_crates);
 
                 StatefulWidget::render(
@@ -344,7 +354,7 @@ impl App {
                     &mut self.crates_list.state,
                 );
             }
-            CategoriesTabs::Networking => {
+            CategoriesWidget::Networking => {
                 self.crates_list.crates_widget_list =
                     CratesListWidget::new(&self.networking_crates);
 
@@ -355,7 +365,7 @@ impl App {
                     &mut self.crates_list.state,
                 );
             }
-            CategoriesTabs::Cryptography => {
+            CategoriesWidget::Cryptography => {
                 self.crates_list.crates_widget_list =
                     CratesListWidget::new(&self.cryptography_crates);
 
@@ -371,10 +381,10 @@ impl App {
 
     fn render_dependencies_list(&mut self, area: Rect, buf: &mut Buffer) {
         StatefulWidget::render(
-            DependenciesListWidget::new(self.dependencies_to_add_list.dependencies_to_add.clone()),
+            DependenciesListWidget::new(self.crates_to_add.crate_to_add.clone()),
             area,
             buf,
-            &mut self.dependencies_to_add_list.state,
+            &mut self.crates_to_add.state,
         );
     }
 
@@ -479,81 +489,66 @@ impl App {
     }
 
     pub fn toggle_select_all_dependencies(&mut self) {
-        match self.category_tabs {
-            CategoriesTabs::Clis => {
+        match self.crate_categories {
+            CategoriesWidget::Clis => {
                 toggle_status_all(&mut self.clis_crates);
-                toggle_dependencies_all(
-                    &self.clis_crates,
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
-                );
+                toggle_dependencies_all(&self.clis_crates, &mut self.crates_to_add.crate_to_add);
             }
-            CategoriesTabs::Graphics => {
+            CategoriesWidget::Graphics => {
                 toggle_status_all(&mut self.graphics_crates);
                 toggle_dependencies_all(
                     &self.graphics_crates,
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                    &mut self.crates_to_add.crate_to_add,
                 );
             }
-            CategoriesTabs::Concurrency => {
+            CategoriesWidget::Concurrency => {
                 toggle_status_all(&mut self.concurrency_crates);
                 toggle_dependencies_all(
                     &self.concurrency_crates,
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                    &mut self.crates_to_add.crate_to_add,
                 );
             }
 
-            CategoriesTabs::FFI => {
+            CategoriesWidget::FFI => {
                 toggle_status_all(&mut self.ffi_crates);
-                toggle_dependencies_all(
-                    &self.ffi_crates,
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
-                );
+                toggle_dependencies_all(&self.ffi_crates, &mut self.crates_to_add.crate_to_add);
             }
-            CategoriesTabs::Math => {
+            CategoriesWidget::Math => {
                 toggle_status_all(&mut self.math_crates);
-                toggle_dependencies_all(
-                    &self.math_crates,
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
-                );
+                toggle_dependencies_all(&self.math_crates, &mut self.crates_to_add.crate_to_add);
             }
 
-            CategoriesTabs::Common => {
+            CategoriesWidget::Common => {
                 toggle_status_all(&mut self.common_crates);
-                toggle_dependencies_all(
-                    &self.common_crates,
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
-                );
+                toggle_dependencies_all(&self.common_crates, &mut self.crates_to_add.crate_to_add);
             }
 
-            CategoriesTabs::General => {
+            CategoriesWidget::General => {
                 toggle_status_all(&mut self.general_crates);
-                toggle_dependencies_all(
-                    &self.general_crates,
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
-                );
+                toggle_dependencies_all(&self.general_crates, &mut self.crates_to_add.crate_to_add);
             }
 
-            CategoriesTabs::Databases => {
+            CategoriesWidget::Databases => {
                 toggle_status_all(&mut self.database_crates);
                 toggle_dependencies_all(
                     &self.database_crates,
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                    &mut self.crates_to_add.crate_to_add,
                 );
             }
 
-            CategoriesTabs::Networking => {
+            CategoriesWidget::Networking => {
                 toggle_status_all(&mut self.networking_crates);
                 toggle_dependencies_all(
                     &self.networking_crates,
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                    &mut self.crates_to_add.crate_to_add,
                 );
             }
 
-            CategoriesTabs::Cryptography => {
+            CategoriesWidget::Cryptography => {
                 toggle_status_all(&mut self.cryptography_crates);
                 toggle_dependencies_all(
                     &self.cryptography_crates,
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                    &mut self.crates_to_add.crate_to_add,
                 );
             }
         }
@@ -568,53 +563,53 @@ impl App {
 
     pub fn toggle_select_dependencie(&mut self) {
         if let Some(index_crate_selected) = self.crates_list.state.selected() {
-            match self.category_tabs {
-                CategoriesTabs::Clis => toggle_one_dependency(
+            match self.crate_categories {
+                CategoriesWidget::Clis => toggle_one_dependency(
                     &mut self.clis_crates[index_crate_selected],
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                    &mut self.crates_to_add.crate_to_add,
                 ),
-                CategoriesTabs::Graphics => toggle_one_dependency(
+                CategoriesWidget::Graphics => toggle_one_dependency(
                     &mut self.graphics_crates[index_crate_selected],
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                    &mut self.crates_to_add.crate_to_add,
                 ),
-                CategoriesTabs::Concurrency => toggle_one_dependency(
+                CategoriesWidget::Concurrency => toggle_one_dependency(
                     &mut self.concurrency_crates[index_crate_selected],
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                    &mut self.crates_to_add.crate_to_add,
                 ),
 
-                CategoriesTabs::Cryptography => toggle_one_dependency(
+                CategoriesWidget::Cryptography => toggle_one_dependency(
                     &mut self.cryptography_crates[index_crate_selected],
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                    &mut self.crates_to_add.crate_to_add,
                 ),
 
-                CategoriesTabs::Networking => toggle_one_dependency(
+                CategoriesWidget::Networking => toggle_one_dependency(
                     &mut self.networking_crates[index_crate_selected],
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                    &mut self.crates_to_add.crate_to_add,
                 ),
 
-                CategoriesTabs::Databases => toggle_one_dependency(
+                CategoriesWidget::Databases => toggle_one_dependency(
                     &mut self.database_crates[index_crate_selected],
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                    &mut self.crates_to_add.crate_to_add,
                 ),
 
-                CategoriesTabs::General => toggle_one_dependency(
+                CategoriesWidget::General => toggle_one_dependency(
                     &mut self.general_crates[index_crate_selected],
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                    &mut self.crates_to_add.crate_to_add,
                 ),
 
-                CategoriesTabs::Common => toggle_one_dependency(
+                CategoriesWidget::Common => toggle_one_dependency(
                     &mut self.common_crates[index_crate_selected],
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                    &mut self.crates_to_add.crate_to_add,
                 ),
 
-                CategoriesTabs::Math => toggle_one_dependency(
+                CategoriesWidget::Math => toggle_one_dependency(
                     &mut self.math_crates[index_crate_selected],
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                    &mut self.crates_to_add.crate_to_add,
                 ),
 
-                CategoriesTabs::FFI => toggle_one_dependency(
+                CategoriesWidget::FFI => toggle_one_dependency(
                     &mut self.ffi_crates[index_crate_selected],
-                    &mut self.dependencies_to_add_list.dependencies_to_add,
+                    &mut self.crates_to_add.crate_to_add,
                 ),
             };
         }
@@ -661,50 +656,50 @@ impl App {
         let (current_crate_selected, index_current_crate_selected) =
             self.get_current_crate_selected().unwrap();
         if !current_crate_selected.is_loading {
-            match self.category_tabs {
-                CategoriesTabs::General => {
+            match self.crate_categories {
+                CategoriesWidget::General => {
                     let current_crate = &mut self.general_crates[index_current_crate_selected];
 
                     toggle_one_feature(current_crate, &self.features.state);
                 }
-                CategoriesTabs::Common => {
+                CategoriesWidget::Common => {
                     let current_crate = &mut self.common_crates[index_current_crate_selected];
                     toggle_one_feature(current_crate, &self.features.state);
                 }
-                CategoriesTabs::FFI => {
+                CategoriesWidget::FFI => {
                     let current_crate = &mut self.ffi_crates[index_current_crate_selected];
                     toggle_one_feature(current_crate, &self.features.state);
                 }
 
-                CategoriesTabs::Math => {
+                CategoriesWidget::Math => {
                     let current_crate = &mut self.math_crates[index_current_crate_selected];
                     toggle_one_feature(current_crate, &self.features.state);
                 }
 
-                CategoriesTabs::Clis => {
+                CategoriesWidget::Clis => {
                     let current_crate = &mut self.clis_crates[index_current_crate_selected];
                     toggle_one_feature(current_crate, &self.features.state);
                 }
 
-                CategoriesTabs::Graphics => {
+                CategoriesWidget::Graphics => {
                     let current_crate = &mut self.graphics_crates[index_current_crate_selected];
                     toggle_one_feature(current_crate, &self.features.state);
                 }
 
-                CategoriesTabs::Databases => {
+                CategoriesWidget::Databases => {
                     let current_crate = &mut self.database_crates[index_current_crate_selected];
                     toggle_one_feature(current_crate, &self.features.state);
                 }
-                CategoriesTabs::Networking => {
+                CategoriesWidget::Networking => {
                     let current_crate = &mut self.networking_crates[index_current_crate_selected];
                     toggle_one_feature(current_crate, &self.features.state);
                 }
-                CategoriesTabs::Concurrency => {
+                CategoriesWidget::Concurrency => {
                     let current_crate = &mut self.concurrency_crates[index_current_crate_selected];
                     toggle_one_feature(current_crate, &self.features.state);
                 }
 
-                CategoriesTabs::Cryptography => {
+                CategoriesWidget::Cryptography => {
                     let current_crate = &mut self.cryptography_crates[index_current_crate_selected];
                     toggle_one_feature(current_crate, &self.features.state);
                 }
