@@ -14,6 +14,7 @@ use ratatui::{
 use crate::{
     backend::{Categories, CategoriesWithSubCategories},
     content_parser::ContentParser,
+    dependency_builder::CrateToAdd,
     tui::handler::Action,
     utils::{
         centered_rect, toggle_dependencies_all, toggle_one_dependency, toggle_one_feature,
@@ -23,7 +24,7 @@ use crate::{
 
 use super::widgets::{
     CategoriesWidget, CrateItemList, CratesListWidget, CratesToAddListWidget, FeaturesWidgetList,
-    FooterInstructions, Popup,
+    FooterInstructions, ItemListStatus, Popup,
 };
 
 pub struct App {
@@ -34,7 +35,7 @@ pub struct App {
     pub crates_list: CratesList,
     ///These are the categories e.g General , Common, Math-scientific
     pub crate_categories: CategoriesList,
-    ///Contains the features information about the features being displayed
+    ///Contains the information about the features being displayed
     features: Features,
     pub exit: bool,
     pub is_showing_features: bool,
@@ -122,12 +123,7 @@ impl Widget for &mut App {
         if self.is_adding_dependencies {
             let center = centered_rect(60, 20, area);
             Clear.render(center, buf);
-            StatefulWidget::render(
-                self.popup_widget.clone(),
-                center,
-                buf,
-                &mut self.loader_state,
-            );
+            StatefulWidgetRef::render_ref(&self.popup_widget, center, buf, &mut self.loader_state);
         }
     }
 }
@@ -379,7 +375,8 @@ impl App {
     }
 
     fn render_crates_to_add_list(&mut self, area: Rect, buf: &mut Buffer) {
-        self.crates_to_add.widget = CratesToAddListWidget::new(self.crates_to_add.widget.crates.clone());
+        self.crates_to_add.widget =
+            CratesToAddListWidget::new(self.crates_to_add.widget.crates.clone());
         StatefulWidgetRef::render_ref(
             &self.crates_to_add.widget,
             area,
@@ -409,15 +406,7 @@ impl App {
     pub fn scroll_down(&mut self) {
         let next = match self.crates_list.state.selected() {
             Some(index) => {
-                if index
-                    == self
-                        .crates_list
-                        .widget
-                        .crates
-                        .iter()
-                        .len()
-                        .saturating_sub(1)
-                {
+                if index == self.crates_list.widget.crates.len().saturating_sub(1) {
                     0
                 } else {
                     index.saturating_add(1)
@@ -469,7 +458,6 @@ impl App {
                     == current_crate_selected
                         .features
                         .unwrap_or_default()
-                        .iter()
                         .len()
                         .saturating_sub(1)
                 {
@@ -492,11 +480,17 @@ impl App {
             }
             CategoriesWidget::Graphics => {
                 toggle_status_all(&mut self.graphics_crates);
-                toggle_dependencies_all(&self.graphics_crates, &mut self.crates_to_add.widget.crates);
+                toggle_dependencies_all(
+                    &self.graphics_crates,
+                    &mut self.crates_to_add.widget.crates,
+                );
             }
             CategoriesWidget::Concurrency => {
                 toggle_status_all(&mut self.concurrency_crates);
-                toggle_dependencies_all(&self.concurrency_crates, &mut self.crates_to_add.widget.crates);
+                toggle_dependencies_all(
+                    &self.concurrency_crates,
+                    &mut self.crates_to_add.widget.crates,
+                );
             }
 
             CategoriesWidget::FFI => {
@@ -515,22 +509,34 @@ impl App {
 
             CategoriesWidget::General => {
                 toggle_status_all(&mut self.general_crates);
-                toggle_dependencies_all(&self.general_crates, &mut self.crates_to_add.widget.crates);
+                toggle_dependencies_all(
+                    &self.general_crates,
+                    &mut self.crates_to_add.widget.crates,
+                );
             }
 
             CategoriesWidget::Databases => {
                 toggle_status_all(&mut self.database_crates);
-                toggle_dependencies_all(&self.database_crates, &mut self.crates_to_add.widget.crates);
+                toggle_dependencies_all(
+                    &self.database_crates,
+                    &mut self.crates_to_add.widget.crates,
+                );
             }
 
             CategoriesWidget::Networking => {
                 toggle_status_all(&mut self.networking_crates);
-                toggle_dependencies_all(&self.networking_crates, &mut self.crates_to_add.widget.crates);
+                toggle_dependencies_all(
+                    &self.networking_crates,
+                    &mut self.crates_to_add.widget.crates,
+                );
             }
 
             CategoriesWidget::Cryptography => {
                 toggle_status_all(&mut self.cryptography_crates);
-                toggle_dependencies_all(&self.cryptography_crates, &mut self.crates_to_add.widget.crates);
+                toggle_dependencies_all(
+                    &self.cryptography_crates,
+                    &mut self.crates_to_add.widget.crates,
+                );
             }
         }
     }
@@ -545,53 +551,43 @@ impl App {
     pub fn toggle_select_dependencie(&mut self) {
         if let Some(index_crate_selected) = self.crates_list.state.selected() {
             match self.crate_categories.widget {
-                CategoriesWidget::Clis => toggle_one_dependency(
-                    &mut self.clis_crates[index_crate_selected],
-                    &mut self.crates_to_add.widget.crates,
-                ),
-                CategoriesWidget::Graphics => toggle_one_dependency(
-                    &mut self.graphics_crates[index_crate_selected],
-                    &mut self.crates_to_add.widget.crates,
-                ),
-                CategoriesWidget::Concurrency => toggle_one_dependency(
-                    &mut self.concurrency_crates[index_crate_selected],
-                    &mut self.crates_to_add.widget.crates,
-                ),
+                CategoriesWidget::Clis => {
+                    toggle_one_dependency(&mut self.clis_crates[index_crate_selected]);
+                }
+                CategoriesWidget::Graphics => {
+                    toggle_one_dependency(&mut self.graphics_crates[index_crate_selected]);
+                }
+                CategoriesWidget::Concurrency => {
+                    toggle_one_dependency(&mut self.concurrency_crates[index_crate_selected]);
+                }
 
-                CategoriesWidget::Cryptography => toggle_one_dependency(
-                    &mut self.cryptography_crates[index_crate_selected],
-                    &mut self.crates_to_add.widget.crates,
-                ),
+                CategoriesWidget::Cryptography => {
+                    toggle_one_dependency(&mut self.cryptography_crates[index_crate_selected]);
+                }
 
-                CategoriesWidget::Networking => toggle_one_dependency(
-                    &mut self.networking_crates[index_crate_selected],
-                    &mut self.crates_to_add.widget.crates,
-                ),
+                CategoriesWidget::Networking => {
+                    toggle_one_dependency(&mut self.networking_crates[index_crate_selected]);
+                }
 
-                CategoriesWidget::Databases => toggle_one_dependency(
-                    &mut self.database_crates[index_crate_selected],
-                    &mut self.crates_to_add.widget.crates,
-                ),
+                CategoriesWidget::Databases => {
+                    toggle_one_dependency(&mut self.database_crates[index_crate_selected]);
+                }
 
-                CategoriesWidget::General => toggle_one_dependency(
-                    &mut self.general_crates[index_crate_selected],
-                    &mut self.crates_to_add.widget.crates,
-                ),
+                CategoriesWidget::General => {
+                    toggle_one_dependency(&mut self.general_crates[index_crate_selected]);
+                }
 
-                CategoriesWidget::Common => toggle_one_dependency(
-                    &mut self.common_crates[index_crate_selected],
-                    &mut self.crates_to_add.widget.crates,
-                ),
+                CategoriesWidget::Common => {
+                    toggle_one_dependency(&mut self.common_crates[index_crate_selected]);
+                }
 
-                CategoriesWidget::Math => toggle_one_dependency(
-                    &mut self.math_crates[index_crate_selected],
-                    &mut self.crates_to_add.widget.crates,
-                ),
+                CategoriesWidget::Math => {
+                    toggle_one_dependency(&mut self.math_crates[index_crate_selected]);
+                }
 
-                CategoriesWidget::FFI => toggle_one_dependency(
-                    &mut self.ffi_crates[index_crate_selected],
-                    &mut self.crates_to_add.widget.crates,
-                ),
+                CategoriesWidget::FFI => {
+                    toggle_one_dependency(&mut self.ffi_crates[index_crate_selected]);
+                }
             };
         }
     }
@@ -623,6 +619,28 @@ impl App {
     #[inline]
     pub fn on_tick(&mut self) {
         self.loader_state.calc_next();
+
+        self.push_selected_crates();
+    }
+
+    pub fn push_selected_crates(&mut self) {
+        if let CategoriesWidget::General = self.crate_categories.widget {
+            for krate in &self.general_crates {
+                if krate.status == ItemListStatus::Selected
+                    && !self
+                        .crates_to_add
+                        .widget
+                        .crates
+                        .iter()
+                        .any(|crate_to_add| crate_to_add.crate_name == krate.name)
+                {
+                    self.crates_to_add
+                        .widget
+                        .crates
+                        .push(CrateToAdd::from(krate));
+                }
+            }
+        };
     }
 
     #[inline]
@@ -714,8 +732,8 @@ impl App {
 
             StatefulWidget::render(loader, center, buf, &mut self.loader_state);
         } else {
-            StatefulWidget::render(
-                self.features.widget.clone(),
+            StatefulWidgetRef::render_ref(
+                &self.features.widget,
                 center,
                 buf,
                 &mut self.features.state,

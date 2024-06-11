@@ -31,7 +31,7 @@ impl From<crate::backend::Table> for Vec<CrateItemList> {
                     krate.name.clone(),
                     krate.description.clone(),
                     ItemListStatus::default(),
-                    krate.features.clone().map(|features| {
+                    krate.features.as_ref().map(|features| {
                         features
                             .iter()
                             .map(|feat| FeatureItemList::new(feat.clone()))

@@ -36,18 +36,13 @@ pub fn toggle_dependencies_all(crates: &[CrateItemList], dependencies_added: &mu
     }
 }
 
-pub fn toggle_one_dependency(
-    crate_selected: &mut CrateItemList,
-    dependencies_added: &mut Vec<CrateToAdd>,
-) {
+pub fn toggle_one_dependency(crate_selected: &mut CrateItemList) {
     match crate_selected.status {
         ItemListStatus::Selected => {
             crate_selected.status = ItemListStatus::Unselected;
-            dependencies_added.retain(|item| *item.crate_name != crate_selected.name);
         }
         ItemListStatus::Unselected => {
             crate_selected.status = ItemListStatus::Selected;
-            dependencies_added.push(CrateToAdd::from(crate_selected.clone()));
         }
     }
 }

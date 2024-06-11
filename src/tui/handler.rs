@@ -72,7 +72,11 @@ pub fn update(app: &mut App, action: Action) {
                 app.toggle_select_dependencie();
             }
         }
-        Action::ToggleAll => app.toggle_select_all_dependencies(),
+        Action::ToggleAll => {
+            if !app.is_showing_features {
+                app.toggle_select_all_dependencies();
+            }
+        }
         Action::Tick => {
             app.on_tick();
         }
@@ -103,8 +107,7 @@ pub fn update(app: &mut App, action: Action) {
         Action::AddingDeps => {
             let tx = app.action_tx.clone();
 
-            let deps_builder =
-                DependenciesBuilder::new(app.crates_to_add.widget.crates.clone());
+            let deps_builder = DependenciesBuilder::new(app.crates_to_add.widget.crates.clone());
 
             tokio::spawn(async move {
                 match deps_builder.add_dependencies() {

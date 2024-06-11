@@ -18,6 +18,78 @@ pub enum ItemListStatus {
     Unselected,
 }
 
+#[derive(
+    Default, Clone, Copy, Display, FromRepr, EnumIter, PartialEq, Eq, PartialOrd, Ord, Debug,
+)]
+pub enum CategoriesWidget {
+    #[strum(to_string = "General")]
+    #[default]
+    General,
+
+    #[strum(to_string = "Common")]
+    Common,
+    #[strum(to_string = "Math-scientific")]
+    Math,
+
+    #[strum(to_string = "FFI")]
+    FFI,
+
+    #[strum(to_string = "Cryptography")]
+    Cryptography,
+
+    #[strum(to_string = "Concurrency")]
+    Concurrency,
+
+    #[strum(to_string = "Networking")]
+    Networking,
+
+    #[strum(to_string = "Databases")]
+    Databases,
+
+    #[strum(to_string = "Cli-tools")]
+    Clis,
+
+    #[strum(to_string = "Graphics")]
+    Graphics,
+}
+
+//Heavy use of unwrap here, this is infalle, I think
+impl CategoriesWidget {
+    pub fn next(self) -> Self {
+        let current_index = self as usize;
+        let previous_index = current_index.saturating_add(1);
+        Self::from_repr(previous_index).unwrap_or(Self::from_repr(0).unwrap())
+    }
+
+    pub fn previous(self) -> Self {
+        let current_index = self as usize;
+        let previous_index = current_index.saturating_sub(1);
+        if current_index == 0 {
+            return Self::from_repr(Self::iter().len() - 1).unwrap();
+        }
+
+        Self::from_repr(previous_index).unwrap()
+    }
+}
+
+impl StatefulWidget for CategoriesWidget {
+    type State = ListState;
+
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+        let categories: Vec<String> = CategoriesWidget::iter()
+            .map(|category| format!("{category}"))
+            .collect();
+
+        let list = List::new(categories)
+            .style(Style::default().white())
+            .highlight_style(Style::default().blue())
+            .highlight_symbol(">> ")
+            .highlight_style(Style::default().yellow());
+
+        StatefulWidget::render(list, area, buf, state);
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct Popup {
     pub message: String,
@@ -72,9 +144,9 @@ impl FeaturesWidgetList {
     }
 }
 
-impl StatefulWidget for FeaturesWidgetList {
+impl StatefulWidgetRef for FeaturesWidgetList {
     type State = ListState;
-    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+    fn render_ref(&self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         Block::bordered()
             .title(format!("Features of crate: {}", self.crate_name))
             .title_bottom(Line::from(vec![
@@ -94,9 +166,9 @@ impl StatefulWidget for FeaturesWidgetList {
             horizontal: 1,
         });
 
-        match self.features {
+        match &self.features {
             Some(features) => {
-                let features_list = List::new(features)
+                let features_list = List::new(features.clone())
                     .highlight_style(Style::default().blue())
                     .highlight_symbol(">> ")
                     .direction(ListDirection::TopToBottom);
@@ -108,10 +180,10 @@ impl StatefulWidget for FeaturesWidgetList {
     }
 }
 
-impl StatefulWidget for Popup {
+impl StatefulWidgetRef for Popup {
     type State = ThrobberState;
 
-    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+    fn render_ref(&self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         Block::bordered().title("").render(area, buf);
 
         let inner_area = area.inner(&Margin {
@@ -240,78 +312,6 @@ impl CratesListWidget {
         Self {
             crates: crates.to_vec(),
         }
-    }
-}
-
-#[derive(
-    Default, Clone, Copy, Display, FromRepr, EnumIter, PartialEq, Eq, PartialOrd, Ord, Debug,
-)]
-pub enum CategoriesWidget {
-    #[strum(to_string = "General")]
-    #[default]
-    General,
-
-    #[strum(to_string = "Common")]
-    Common,
-    #[strum(to_string = "Math-scientific")]
-    Math,
-
-    #[strum(to_string = "FFI")]
-    FFI,
-
-    #[strum(to_string = "Cryptography")]
-    Cryptography,
-
-    #[strum(to_string = "Concurrency")]
-    Concurrency,
-
-    #[strum(to_string = "Networking")]
-    Networking,
-
-    #[strum(to_string = "Databases")]
-    Databases,
-
-    #[strum(to_string = "Cli-tools")]
-    Clis,
-
-    #[strum(to_string = "Graphics")]
-    Graphics,
-}
-
-//Heavy use of unwrap here, this is infalle, I think
-impl CategoriesWidget {
-    pub fn next(self) -> Self {
-        let current_index = self as usize;
-        let previous_index = current_index.saturating_add(1);
-        Self::from_repr(previous_index).unwrap_or(Self::from_repr(0).unwrap())
-    }
-
-    pub fn previous(self) -> Self {
-        let current_index = self as usize;
-        let previous_index = current_index.saturating_sub(1);
-        if current_index == 0 {
-            return Self::from_repr(Self::iter().len() - 1).unwrap();
-        }
-
-        Self::from_repr(previous_index).unwrap()
-    }
-}
-
-impl StatefulWidget for CategoriesWidget {
-    type State = ListState;
-
-    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let categories: Vec<String> = CategoriesWidget::iter()
-            .map(|category| format!("{category}"))
-            .collect();
-
-        let list = List::new(categories)
-            .style(Style::default().white())
-            .highlight_style(Style::default().blue())
-            .highlight_symbol(">> ")
-            .highlight_style(Style::default().yellow());
-
-        StatefulWidget::render(list, area, buf, state);
     }
 }
 
