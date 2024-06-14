@@ -17,8 +17,8 @@ use crate::{
     dependency_builder::CrateToAdd,
     tui::handler::Action,
     utils::{
-        centered_rect, toggle_dependencies_all, toggle_one_dependency, toggle_one_feature,
-        toggle_status_all,
+        centered_rect, push_or_remove_crates, toggle_dependencies_all, toggle_one_dependency,
+        toggle_one_feature, toggle_status_all,
     },
 };
 
@@ -619,28 +619,56 @@ impl App {
     #[inline]
     pub fn on_tick(&mut self) {
         self.loader_state.calc_next();
-
-        self.push_selected_crates();
     }
 
-    pub fn push_selected_crates(&mut self) {
-        if let CategoriesWidget::General = self.crate_categories.widget {
-            for krate in &self.general_crates {
-                if krate.status == ItemListStatus::Selected
-                    && !self
-                        .crates_to_add
-                        .widget
-                        .crates
-                        .iter()
-                        .any(|crate_to_add| crate_to_add.crate_name == krate.name)
-                {
-                    self.crates_to_add
-                        .widget
-                        .crates
-                        .push(CrateToAdd::from(krate));
-                }
+    ///This method checks for selected crates, adds them and ensures not selected crates are
+    ///removed
+    pub fn push_or_remove_selected_crates(&mut self) {
+        match self.crate_categories.widget {
+            CategoriesWidget::FFI => {
+                push_or_remove_crates(&mut self.crates_to_add.widget.crates, &self.ffi_crates);
             }
-        };
+            CategoriesWidget::Math => {
+                push_or_remove_crates(&mut self.crates_to_add.widget.crates, &self.math_crates);
+            }
+            CategoriesWidget::Clis => {
+                push_or_remove_crates(&mut self.crates_to_add.widget.crates, &self.clis_crates);
+            }
+
+            CategoriesWidget::Common => {
+                push_or_remove_crates(&mut self.crates_to_add.widget.crates, &self.common_crates);
+            }
+
+            CategoriesWidget::General => {
+                push_or_remove_crates(&mut self.crates_to_add.widget.crates, &self.general_crates);
+            }
+            CategoriesWidget::Graphics => {
+                push_or_remove_crates(&mut self.crates_to_add.widget.crates, &self.graphics_crates);
+            }
+            CategoriesWidget::Databases => {
+                push_or_remove_crates(&mut self.crates_to_add.widget.crates, &self.database_crates);
+            }
+
+            CategoriesWidget::Networking => {
+                push_or_remove_crates(
+                    &mut self.crates_to_add.widget.crates,
+                    &self.networking_crates,
+                );
+            }
+
+            CategoriesWidget::Concurrency => {
+                push_or_remove_crates(
+                    &mut self.crates_to_add.widget.crates,
+                    &self.concurrency_crates,
+                );
+            }
+            CategoriesWidget::Cryptography => {
+                push_or_remove_crates(
+                    &mut self.crates_to_add.widget.crates,
+                    &self.cryptography_crates,
+                );
+            }
+        }
     }
 
     #[inline]

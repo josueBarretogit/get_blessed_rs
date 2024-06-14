@@ -36,6 +36,26 @@ pub fn toggle_dependencies_all(crates: &[CrateItemList], dependencies_added: &mu
     }
 }
 
+///If the crate is selected and it is not in the crates_to_add list then push it, else remove
+///it
+pub fn push_or_remove_crates(crates_to_add: &mut Vec<CrateToAdd>, crates: &[CrateItemList]) {
+    for krate in crates {
+        match krate.status {
+            ItemListStatus::Selected => {
+                if !crates_to_add
+                    .iter()
+                    .any(|crate_to_add| crate_to_add.crate_name == krate.name)
+                {
+                    crates_to_add.push(CrateToAdd::from(krate));
+                }
+            }
+            ItemListStatus::Unselected => {
+                crates_to_add.retain(|crate_to_add| crate_to_add.crate_name != krate.name);
+            }
+        }
+    }
+}
+
 pub fn toggle_one_dependency(crate_selected: &mut CrateItemList) {
     match crate_selected.status {
         ItemListStatus::Selected => {

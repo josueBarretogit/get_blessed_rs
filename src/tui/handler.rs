@@ -70,6 +70,7 @@ pub fn update(app: &mut App, action: Action) {
                 app.toggle_select_one_feature();
             } else {
                 app.toggle_select_dependencie();
+                app.push_or_remove_selected_crates();
             }
         }
         Action::ToggleAll => {
