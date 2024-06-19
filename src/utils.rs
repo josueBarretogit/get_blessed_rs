@@ -11,8 +11,8 @@ use crate::{
     },
 };
 
-pub fn toggle_status_all(dependencies: &mut [CrateItemList]) {
-    for item in dependencies {
+pub fn toggle_status_all(crates: &mut [CrateItemList]) {
+    for item in crates {
         item.status = match item.status {
             ItemListStatus::Selected => ItemListStatus::Unselected,
             ItemListStatus::Unselected => ItemListStatus::Selected,
@@ -20,49 +20,47 @@ pub fn toggle_status_all(dependencies: &mut [CrateItemList]) {
     }
 }
 
-pub fn toggle_dependencies_all(crates: &[CrateItemList], dependencies_added: &mut Vec<CrateToAdd>) {
-    for item in crates {
-        let dependency_to_add = CrateToAdd::from(item.clone());
-
-        if dependencies_added
-            .iter()
-            .any(|dependency| dependency.crate_name == dependency_to_add.crate_name)
-            && item.status == ItemListStatus::Unselected
-        {
-            dependencies_added.retain(|it| *it.crate_name != *dependency_to_add.crate_name);
-        } else if item.status == ItemListStatus::Selected {
-            dependencies_added.push(dependency_to_add);
-        }
-    }
-}
-
-///If the crate is selected and it is not in the crates_to_add list then push it, else remove
-///it
-pub fn push_or_remove_crates(crates_to_add: &mut Vec<CrateToAdd>, crates: &[CrateItemList]) {
-    for krate in crates {
-        match krate.status {
-            ItemListStatus::Selected => {
-                if !crates_to_add
-                    .iter()
-                    .any(|crate_to_add| crate_to_add.crate_name == krate.name)
-                {
-                    crates_to_add.push(CrateToAdd::from(krate));
-                }
-            }
-            ItemListStatus::Unselected => {
-                crates_to_add.retain(|crate_to_add| crate_to_add.crate_name != krate.name);
-            }
-        }
-    }
-}
-
-pub fn toggle_one_dependency(crate_selected: &mut CrateItemList) {
+pub fn toggle_status_one_crate(crate_selected: &mut CrateItemList) {
     match crate_selected.status {
         ItemListStatus::Selected => {
             crate_selected.status = ItemListStatus::Unselected;
         }
         ItemListStatus::Unselected => {
             crate_selected.status = ItemListStatus::Selected;
+        }
+    }
+}
+
+///If the crate is selected and it is not in the `crates_to_add` list then push it, else remove
+///it
+///if the crate is already in the list of crates to be  added and the features selelcted are
+///different, then update it
+pub fn push_or_remove_crates(crates_to_add: &mut Vec<CrateToAdd>, crates: &[CrateItemList]) {
+    for krate in crates {
+        match krate.status {
+            ItemListStatus::Selected => {
+                if !crates_to_add.iter().any(|crate_to_add| {
+                    let features_are_different = crate_to_add
+                        .features
+                        .clone()
+                        .zip(krate.features.clone())
+                        .map(|(features_item_list, features_crate_to_add)| {
+                            features_item_list.len() != features_crate_to_add.len()
+                        });
+
+                    match features_are_different {
+                        Some(are_different) => {
+                            are_different && crate_to_add.crate_name == krate.name
+                        }
+                        None => crate_to_add.crate_name == krate.name,
+                    }
+                }) {
+                    crates_to_add.push(CrateToAdd::from(krate));
+                }
+            }
+            ItemListStatus::Unselected => {
+                crates_to_add.retain(|crate_to_add| crate_to_add.crate_name != krate.name);
+            }
         }
     }
 }
@@ -104,10 +102,6 @@ pub fn select_crate_if_features_are_selected(app: &mut App) {
                 .any(|feature| feature.status == ItemListStatus::Selected)
         }) && !current_crate_is_selected
         {
-            app.crates_to_add
-                .widget
-                .crates
-                .push(CrateToAdd::from(crate_selected));
             match app.crate_categories.widget {
                 CategoriesWidget::General => {
                     app.general_crates[index_current_crate].status = ItemListStatus::Selected;
