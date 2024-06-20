@@ -31,31 +31,31 @@ pub fn toggle_status_one_crate(crate_selected: &mut CrateItemList) {
     }
 }
 
-///If the crate is selected and it is not in the `crates_to_add` list then push it, else remove
-///it
-///if the crate is already in the list of crates to be  added and the features selelcted are
-///different, then update it
 pub fn push_or_remove_crates(crates_to_add: &mut Vec<CrateToAdd>, crates: &[CrateItemList]) {
     for krate in crates {
         match krate.status {
             ItemListStatus::Selected => {
-                if !crates_to_add.iter().any(|crate_to_add| {
-                    let features_are_different = crate_to_add
-                        .features
-                        .clone()
-                        .zip(krate.features.clone())
-                        .map(|(features_item_list, features_crate_to_add)| {
-                            features_item_list.len() != features_crate_to_add.len()
-                        });
+                let crate_to_push_or_update = crates_to_add
+                    .iter()
+                    .position(|crate_to_add| crate_to_add.crate_name == krate.name);
 
-                    match features_are_different {
-                        Some(are_different) => {
-                            are_different && crate_to_add.crate_name == krate.name
-                        }
-                        None => crate_to_add.crate_name == krate.name,
+                // If the crate selected is already in the list then update the features
+                match crate_to_push_or_update {
+                    // Update the features
+                    Some(index) => {
+                        crates_to_add[index].features = krate.features.as_ref().map(|feat| {
+                            feat.iter()
+                                .filter_map(|feature| {
+                                    if feature.status == ItemListStatus::Selected {
+                                        Some(feature.name.to_string())
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect()
+                        });
                     }
-                }) {
-                    crates_to_add.push(CrateToAdd::from(krate));
+                    None => crates_to_add.push(CrateToAdd::from(krate)),
                 }
             }
             ItemListStatus::Unselected => {
@@ -89,18 +89,11 @@ pub fn toggle_one_feature(current_crate: &mut CrateItemList, features_list_state
 
 pub fn select_crate_if_features_are_selected(app: &mut App) {
     if let Some((crate_selected, index_current_crate)) = app.get_current_crate_selected() {
-        let current_crate_is_selected = app
-            .crates_to_add
-            .widget
-            .crates
-            .iter()
-            .any(|crate_to_add| crate_to_add.crate_name == crate_selected.name);
-
         if crate_selected.features.as_ref().is_some_and(|features| {
             features
                 .iter()
                 .any(|feature| feature.status == ItemListStatus::Selected)
-        }) && !current_crate_is_selected
+        }) && crate_selected.status != ItemListStatus::Selected
         {
             match app.crate_categories.widget {
                 CategoriesWidget::General => {
