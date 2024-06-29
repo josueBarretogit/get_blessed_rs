@@ -1,5 +1,5 @@
-use strum::{Display, EnumIter, FromRepr};
 use crate::view::widgets::{CrateItemList, FeatureItemList, ItemListStatus};
+use strum::{Display, EnumIter, FromRepr};
 
 ///This struct represent the data as seen in the actual page
 
@@ -40,6 +40,9 @@ impl From<crate::backend::Table> for Vec<CrateItemList> {
                 ));
             }
         }
+        items.sort();
+
+        items.dedup();
 
         items
     }
