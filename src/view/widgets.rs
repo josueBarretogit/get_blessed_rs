@@ -3,13 +3,17 @@ use ratatui::{
     style::{palette::tailwind, Style},
     widgets::{
         block::{Block, Padding, Position, Title},
-        HighlightSpacing, List, ListDirection, ListItem, ListState, Paragraph, StatefulWidgetRef,
+        Borders,  List, ListDirection, ListItem, ListState, Paragraph,
+        StatefulWidgetRef, Wrap,
     },
 };
 use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
 use throbber_widgets_tui::{Throbber, ThrobberState};
+use tui_widget_list::PreRender;
 
 use crate::dependency_builder::CrateToAdd;
+
+use self::style::Stylize;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ItemListStatus {
@@ -117,7 +121,14 @@ impl From<FeatureItemList> for ListItem<'_> {
             ItemListStatus::Unselected => ("☐", Color::default()),
         };
 
-        let line = Line::from(vec![value.name.into(), " ".into(), is_selected.into()]);
+        let line = match value.status {
+            ItemListStatus::Selected => {
+                Line::from(vec![value.name.black(), " ".into(), is_selected.black()])
+            }
+            ItemListStatus::Unselected => {
+                Line::from(vec![value.name.into(), " ".into(), is_selected.into()])
+            }
+        };
 
         ListItem::new(line).style(Style::default().bg(bg_color))
     }
@@ -169,7 +180,6 @@ impl StatefulWidgetRef for FeaturesWidgetList {
         match &self.features {
             Some(features) => {
                 let features_list = List::new(features.clone())
-                    .highlight_style(Style::default().blue())
                     .highlight_symbol(">> ")
                     .direction(ListDirection::TopToBottom);
 
@@ -212,7 +222,50 @@ pub struct CrateItemList {
     pub description: String,
     pub features: Option<Vec<FeatureItemList>>,
     pub status: ItemListStatus,
+    pub highlight_style: String,
     pub is_loading: bool,
+}
+
+impl ratatui::widgets::Widget for CrateItemList {
+    fn render(self, area: Rect, buf: &mut Buffer)
+    where
+        Self: Sized,
+    {
+        let layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Fill(1), Constraint::Fill(4)]);
+
+        let [name_area, description_area] = layout.areas(area);
+
+        let (is_selected, bg_color) = match self.status {
+            ItemListStatus::Selected => ("✓", tailwind::BLUE.c300),
+            ItemListStatus::Unselected => ("☐", Color::default()),
+        };
+
+        let name = format!("{} {} {}", self.highlight_style, self.name, is_selected);
+
+        name.bold().blue().render(name_area, buf);
+
+        let description = match self.status {
+            ItemListStatus::Unselected => self.description.into(),
+            ItemListStatus::Selected => self.description.black(),
+        };
+
+        Paragraph::new(description)
+            .block(Block::default().borders(Borders::BOTTOM))
+            .style(Style::new().bg(bg_color))
+            .wrap(Wrap { trim: true })
+            .render(description_area, buf);
+    }
+}
+
+impl PreRender for CrateItemList {
+    fn pre_render(&mut self, context: &tui_widget_list::PreRenderContext) -> u16 {
+        if context.is_selected {
+            self.highlight_style = ">>".to_string();
+        }
+        4
+    }
 }
 
 #[derive(Clone, Default)]
@@ -263,6 +316,7 @@ impl CrateItemList {
             features,
             status,
             is_loading: true,
+            highlight_style: String::default(),
         }
     }
 }
@@ -292,16 +346,9 @@ impl From<CrateItemList> for ListItem<'_> {
 }
 
 impl StatefulWidgetRef for CratesListWidget {
-    type State = ListState;
+    type State = tui_widget_list::ListState;
     fn render_ref(&self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let block = Block::default().padding(Padding::uniform(1));
-
-        let list = List::new(self.crates.clone())
-            .block(block)
-            .highlight_style(Style::default())
-            .highlight_symbol(">> ")
-            .highlight_spacing(HighlightSpacing::Always)
-            .direction(ListDirection::TopToBottom);
+        let list = tui_widget_list::List::new(self.crates.clone());
 
         StatefulWidget::render(list, area, buf, state);
     }
@@ -333,7 +380,9 @@ impl<'a> Widget for FooterInstructions<'a> {
     {
         let instructions = Title::from(Line::from(self.instructions));
 
-        let info = Title::from(Line::from(vec!["V0.2.0".into()]))
+        let curret_version = format!("V{}", env!("CARGO_PKG_VERSION"));
+
+        let info = Title::from(Line::from(vec![curret_version.into()]))
             .position(Position::Top)
             .alignment(Alignment::Right);
 

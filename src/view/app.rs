@@ -64,7 +64,7 @@ pub struct Features {
 #[derive(Default)]
 pub struct CratesList {
     widget: CratesListWidget,
-    state: ListState,
+    state: tui_widget_list::ListState,
 }
 
 ///This struct holds the list of crates to be added to user's project
@@ -404,31 +404,11 @@ impl App {
     }
 
     pub fn scroll_down(&mut self) {
-        let next = match self.crates_list.state.selected() {
-            Some(index) => {
-                if index == self.crates_list.widget.crates.len().saturating_sub(1) {
-                    0
-                } else {
-                    index.saturating_add(1)
-                }
-            }
-            None => self.crates_list.state.selected().unwrap_or(0),
-        };
-        self.crates_list.state.select(Some(next));
+        self.crates_list.state.next();
     }
 
     pub fn scroll_up(&mut self) {
-        let next_index = match self.crates_list.state.selected() {
-            Some(index) => {
-                if index == 0 {
-                    self.crates_list.widget.crates.len().saturating_sub(1)
-                } else {
-                    index.saturating_sub(1)
-                }
-            }
-            None => 1,
-        };
-        self.crates_list.state.select(Some(next_index));
+        self.crates_list.state.previous();
     }
 
     pub fn scroll_up_features(&mut self) {
@@ -514,14 +494,14 @@ impl App {
     }
 
     pub fn get_current_crate_selected(&self) -> Option<(CrateItemList, usize)> {
-        self.crates_list.state.selected().map(|index| {
+        self.crates_list.state.selected.map(|index| {
             let crate_item = self.crates_list.widget.crates[index].clone();
             (crate_item, index)
         })
     }
 
     pub fn toggle_select_dependencie(&mut self) {
-        if let Some(index_crate_selected) = self.crates_list.state.selected() {
+        if let Some(index_crate_selected) = self.crates_list.state.selected {
             match self.crate_categories.widget {
                 CategoriesWidget::Clis => {
                     toggle_status_one_crate(&mut self.clis_crates[index_crate_selected]);
@@ -570,7 +550,7 @@ impl App {
     }
 
     pub fn check_docs(&self) {
-        if let Some(index_selected) = self.crates_list.state.selected() {
+        if let Some(index_selected) = self.crates_list.state.selected {
             let crate_name = &self.crates_list.widget.crates[index_selected].name;
             let url = format!("https://docs.rs/{crate_name}/latest/{crate_name}/");
 
@@ -579,7 +559,7 @@ impl App {
     }
 
     pub fn check_crates_io(&self) {
-        if let Some(index_selected) = self.crates_list.state.selected() {
+        if let Some(index_selected) = self.crates_list.state.selected {
             let url = format!(
                 "https://crates.io/crates/{}",
                 self.crates_list.widget.crates[index_selected].name
