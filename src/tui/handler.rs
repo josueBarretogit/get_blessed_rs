@@ -41,6 +41,7 @@ pub fn update(app: &mut App, action: Action) {
             //THe way to do this must be improved since it is really ugly
             if !app.is_showing_features {
                 select_crate_if_features_are_selected(app);
+                app.push_or_remove_selected_crates();
             }
         }
         Action::ShowAddingDependenciesOperation => {
@@ -57,12 +58,12 @@ pub fn update(app: &mut App, action: Action) {
         Action::CheckCratesIo => app.check_crates_io(),
         Action::ScrollPreviousCategory => {
             if !app.is_showing_features {
-                app.previos_tab();
+                app.previos_category();
             }
         }
         Action::ScrollNextCategory => {
             if !app.is_showing_features {
-                app.next_tab();
+                app.next_category();
             }
         }
         Action::ToggleOne => {
@@ -70,9 +71,15 @@ pub fn update(app: &mut App, action: Action) {
                 app.toggle_select_one_feature();
             } else {
                 app.toggle_select_dependencie();
+                app.push_or_remove_selected_crates();
             }
         }
-        Action::ToggleAll => app.toggle_select_all_dependencies(),
+        Action::ToggleAll => {
+            if !app.is_showing_features {
+                app.toggle_select_all_dependencies();
+                app.push_or_remove_selected_crates();
+            }
+        }
         Action::Tick => {
             app.on_tick();
         }
@@ -103,8 +110,7 @@ pub fn update(app: &mut App, action: Action) {
         Action::AddingDeps => {
             let tx = app.action_tx.clone();
 
-            let deps_builder =
-                DependenciesBuilder::new(app.crates_to_add.widget.crates.clone());
+            let deps_builder = DependenciesBuilder::new(app.crates_to_add.widget.crates.clone());
 
             tokio::spawn(async move {
                 match deps_builder.add_dependencies() {
