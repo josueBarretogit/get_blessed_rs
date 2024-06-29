@@ -7,8 +7,8 @@ readme = "README.md"
 homepage = "https://github.com/josueBarretogit/get_blessed_rs"
 repository = "https://github.com/josueBarretogit/get_blessed_rs"
 description = "Terminal tool to get you the best crates for your rust projects with a few keybindings, curated by blessed.rs"
-keywords = ["cli", "command-line", "developer-tools", "dependencies"]
-categories = ["utilities", "development-tools" , "command-line", "dependencies"]
+keywords = ["cli", "command-line", "developer-tools"]
+categories = ["development-tools", "command-line-interface" , "command-line-utilities"]
 license = "MIT"
 exclude = [
   "public/*"
