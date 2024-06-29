@@ -1,20 +1,21 @@
-use core::{panic};
+use core::panic;
+use std::env;
 use std::sync::Arc;
 use std::{error::Error, time::Duration};
 
-use crossterm::event::{KeyCode, KeyEventKind};
+use crossterm::event::{self, poll, Event, KeyCode, KeyEventKind};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
 use crate::content_parser::jsoncontentparser::JsonContentParser;
-use crate::utils::select_crate_if_features_are_selected;
-use crate::view::widgets::{CategoriesTabs, CrateItemList, FeatureItemList};
-use crate::{dependency_builder::DependenciesBuilder, view::ui::AppView};
+use crate::utils::{load_features, select_crate_if_features_are_selected};
+use crate::view::widgets::{CategoriesWidget, CrateItemList, FeatureItemList};
+use crate::{dependency_builder::DependenciesBuilder, view::app::App};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Action {
     FetchFeatures,
-    UpdateFeatures(CategoriesTabs, Vec<FeatureItemList>, usize),
+    UpdateFeatures(CategoriesWidget, Option<Vec<FeatureItemList>>, usize),
     Tick,
     ToggleShowFeatures,
     ShowLoadingAddingDeps,
@@ -32,15 +33,16 @@ pub enum Action {
 }
 
 #[allow(clippy::too_many_lines)]
-pub fn update(app: &mut AppView, action: Action) {
+pub fn update(app: &mut App, action: Action) {
     match action {
         Action::ToggleShowFeatures => {
             app.toggle_show_features();
-            //After user closes the popup where they can se the features we check if we can add 
+            //After user closes the popup where they can se the features we check if we can add
             //the crate if the user selected at least 1 feature
             //THe way to do this must be improved since it is really ugly
             if !app.is_showing_features {
                 select_crate_if_features_are_selected(app);
+                app.push_or_remove_selected_crates();
             }
         }
         Action::ShowAddingDependenciesOperation => {
@@ -57,12 +59,12 @@ pub fn update(app: &mut AppView, action: Action) {
         Action::CheckCratesIo => app.check_crates_io(),
         Action::ScrollPreviousCategory => {
             if !app.is_showing_features {
-                app.previos_tab();
+                app.previos_category();
             }
         }
         Action::ScrollNextCategory => {
             if !app.is_showing_features {
-                app.next_tab();
+                app.next_category();
             }
         }
         Action::ToggleOne => {
@@ -70,9 +72,15 @@ pub fn update(app: &mut AppView, action: Action) {
                 app.toggle_select_one_feature();
             } else {
                 app.toggle_select_dependencie();
+                app.push_or_remove_selected_crates();
             }
         }
-        Action::ToggleAll => app.toggle_select_all_dependencies(),
+        Action::ToggleAll => {
+            if !app.is_showing_features {
+                app.toggle_select_all_dependencies();
+                app.push_or_remove_selected_crates();
+            }
+        }
         Action::Tick => {
             app.on_tick();
         }
@@ -103,8 +111,7 @@ pub fn update(app: &mut AppView, action: Action) {
         Action::AddingDeps => {
             let tx = app.action_tx.clone();
 
-            let deps_builder =
-                DependenciesBuilder::new(app.dependencies_to_add_list.dependencies_to_add.clone());
+            let deps_builder = DependenciesBuilder::new(app.crates_to_add.widget.crates.clone());
 
             tokio::spawn(async move {
                 match deps_builder.add_dependencies() {
@@ -117,127 +124,124 @@ pub fn update(app: &mut AppView, action: Action) {
             });
         }
         Action::FetchFeatures => {
+            let user_agent = format!(
+                "get-blessed/v{} ({} {} {})",
+                env!("CARGO_PKG_VERSION"),
+                env::consts::FAMILY,
+                env::consts::OS,
+                env::consts::ARCH
+            );
+
             let client = Arc::new(
-                crates_io_api::AsyncClient::new(
-                    "josuebarretogit (josuebarretogit@gmail.com)",
-                    Duration::from_millis(100),
-                )
-                .unwrap(),
+                crates_io_api::AsyncClient::new(&user_agent, Duration::from_millis(100)).unwrap(),
             );
 
             fetch_features(
                 &app.general_crates,
                 &app.action_tx,
                 &client,
-                CategoriesTabs::General,
+                CategoriesWidget::General,
             );
 
             fetch_features(
                 &app.common_crates,
                 &app.action_tx,
                 &client,
-                CategoriesTabs::Common,
+                CategoriesWidget::Common,
             );
 
             fetch_features(
                 &app.ffi_crates,
                 &app.action_tx,
                 &client,
-                CategoriesTabs::FFI,
+                CategoriesWidget::FFI,
             );
 
             fetch_features(
                 &app.math_crates,
                 &app.action_tx,
                 &client,
-                CategoriesTabs::Math,
+                CategoriesWidget::Math,
             );
 
             fetch_features(
                 &app.clis_crates,
                 &app.action_tx,
                 &client,
-                CategoriesTabs::Clis,
+                CategoriesWidget::Clis,
             );
 
             fetch_features(
                 &app.graphics_crates,
                 &app.action_tx,
                 &client,
-                CategoriesTabs::Graphics,
+                CategoriesWidget::Graphics,
             );
 
             fetch_features(
                 &app.networking_crates,
                 &app.action_tx,
                 &client,
-                CategoriesTabs::Networking,
+                CategoriesWidget::Networking,
             );
 
             fetch_features(
                 &app.database_crates,
                 &app.action_tx,
                 &client,
-                CategoriesTabs::Databases,
+                CategoriesWidget::Databases,
             );
 
             fetch_features(
                 &app.cryptography_crates,
                 &app.action_tx,
                 &client,
-                CategoriesTabs::Cryptography,
+                CategoriesWidget::Cryptography,
             );
 
             fetch_features(
                 &app.concurrency_crates,
                 &app.action_tx,
                 &client,
-                CategoriesTabs::Concurrency,
+                CategoriesWidget::Concurrency,
             );
         }
 
         Action::UpdateFeatures(category, features, crate_index_to_update) => match category {
-            CategoriesTabs::General => {
-                app.general_crates[crate_index_to_update].features = Some(features);
-                app.general_crates[crate_index_to_update].is_loading = false;
+            CategoriesWidget::General => {
+                load_features(&mut app.general_crates, crate_index_to_update, features);
             }
-            CategoriesTabs::Common => {
-                app.common_crates[crate_index_to_update].features = Some(features);
-                app.common_crates[crate_index_to_update].is_loading = false;
+            CategoriesWidget::Common => {
+                load_features(&mut app.common_crates, crate_index_to_update, features);
             }
-            CategoriesTabs::FFI => {
-                app.ffi_crates[crate_index_to_update].features = Some(features);
-                app.ffi_crates[crate_index_to_update].is_loading = false;
-            }
-            CategoriesTabs::Math => {
-                app.math_crates[crate_index_to_update].features = Some(features);
-                app.math_crates[crate_index_to_update].is_loading = false;
-            }
-            CategoriesTabs::Clis => {
-                app.clis_crates[crate_index_to_update].features = Some(features);
-                app.clis_crates[crate_index_to_update].is_loading = false;
-            }
-            CategoriesTabs::Graphics => {
-                app.graphics_crates[crate_index_to_update].features = Some(features);
-                app.graphics_crates[crate_index_to_update].is_loading = false;
-            }
-            CategoriesTabs::Databases => {
-                app.database_crates[crate_index_to_update].features = Some(features);
-                app.database_crates[crate_index_to_update].is_loading = false;
-            }
-            CategoriesTabs::Networking => {
-                app.networking_crates[crate_index_to_update].features = Some(features);
-                app.networking_crates[crate_index_to_update].is_loading = false;
+            CategoriesWidget::FFI => {
+                load_features(&mut app.ffi_crates, crate_index_to_update, features);
             }
 
-            CategoriesTabs::Concurrency => {
-                app.concurrency_crates[crate_index_to_update].features = Some(features);
-                app.concurrency_crates[crate_index_to_update].is_loading = false;
+            CategoriesWidget::Math => {
+                load_features(&mut app.math_crates, crate_index_to_update, features);
             }
-            CategoriesTabs::Cryptography => {
-                app.cryptography_crates[crate_index_to_update].features = Some(features);
-                app.cryptography_crates[crate_index_to_update].is_loading = false;
+            CategoriesWidget::Clis => {
+                load_features(&mut app.clis_crates, crate_index_to_update, features);
             }
+            CategoriesWidget::Graphics => {
+                load_features(&mut app.graphics_crates, crate_index_to_update, features);
+            }
+            CategoriesWidget::Databases => {
+                load_features(&mut app.database_crates, crate_index_to_update, features);
+            }
+            CategoriesWidget::Networking => {
+                load_features(&mut app.networking_crates, crate_index_to_update, features);
+            }
+
+            CategoriesWidget::Concurrency => {
+                load_features(&mut app.concurrency_crates, crate_index_to_update, features);
+            }
+            CategoriesWidget::Cryptography => load_features(
+                &mut app.cryptography_crates,
+                crate_index_to_update,
+                features,
+            ),
         },
 
         Action::Quit => app.exit(),
@@ -245,38 +249,9 @@ pub fn update(app: &mut AppView, action: Action) {
 }
 pub fn handle_event(tx: UnboundedSender<Action>) -> tokio::task::JoinHandle<()> {
     let tick_rate = std::time::Duration::from_millis(250);
-
     tokio::spawn(async move {
         loop {
-            let action = if crossterm::event::poll(tick_rate).unwrap() {
-                if let crossterm::event::Event::Key(key) = crossterm::event::read().unwrap() {
-                    if key.kind == KeyEventKind::Press {
-                        match key.code {
-                            KeyCode::Enter => Action::ShowLoadingAddingDeps,
-
-                            KeyCode::Char('q') | KeyCode::Esc => Action::Quit,
-                            KeyCode::Tab => Action::ScrollNextCategory,
-                            KeyCode::BackTab => Action::ScrollPreviousCategory,
-                            KeyCode::Down | KeyCode::Char('j') => Action::ScrollDown,
-                            KeyCode::Up | KeyCode::Char('k') => Action::ScrollUp,
-
-                            KeyCode::Char('a') => Action::ToggleAll,
-                            KeyCode::Char('s') => Action::ToggleOne,
-                            KeyCode::Char('d') => Action::CheckDocs,
-                            KeyCode::Char('c') => Action::CheckCratesIo,
-                            KeyCode::Char('f') => Action::ToggleShowFeatures,
-                            _ => Action::Tick,
-                        }
-                    } else {
-                        Action::Tick
-                    }
-                } else {
-                    Action::Tick
-                }
-            } else {
-                Action::Tick
-            };
-
+            let action = user_actions(tick_rate);
             if tx.send(action).is_err() {
                 break;
             }
@@ -291,7 +266,7 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
 
     let json_parser = JsonContentParser::parse_content().await;
 
-    let mut app = AppView::setup(action_tx.clone(), &json_parser);
+    let mut app = App::setup(action_tx.clone(), &json_parser);
 
     let task = handle_event(app.action_tx.clone());
 
@@ -321,7 +296,7 @@ fn fetch_features(
     crates: &[CrateItemList],
     tx: &UnboundedSender<Action>,
     client: &Arc<crates_io_api::AsyncClient>,
-    category: CategoriesTabs,
+    category: CategoriesWidget,
 ) {
     for (index, crateitem) in crates.iter().enumerate() {
         let crate_name = crateitem.name.clone();
@@ -331,18 +306,52 @@ fn fetch_features(
             let response = client.get_crate(&crate_name).await;
             if let Ok(information) = response {
                 if let Some(latest) = information.versions.first() {
-                    tx.send(Action::UpdateFeatures(
-                        category,
-                        latest
-                            .features
-                            .clone()
-                            .into_keys()
-                            .map(FeatureItemList::new)
-                            .collect(),
-                        index,
-                    )).unwrap_or(());
+                    let latest: Vec<FeatureItemList> = latest
+                        .features
+                        .clone()
+                        .into_keys()
+                        .map(FeatureItemList::new)
+                        .collect();
+
+                    if latest.is_empty() {
+                        tx.send(Action::UpdateFeatures(category, None, index))
+                            .unwrap_or(());
+                    } else {
+                        tx.send(Action::UpdateFeatures(category, Some(latest), index))
+                            .unwrap_or(());
+                    }
                 };
             };
         });
+    }
+}
+
+///These are the actions / commands the user can do
+fn user_actions(tick_rate: Duration) -> Action {
+    if poll(tick_rate).unwrap() {
+        if let Event::Key(key) = event::read().unwrap() {
+            if key.kind == KeyEventKind::Press {
+                match key.code {
+                    KeyCode::Enter => Action::ShowLoadingAddingDeps,
+                    KeyCode::Char('q') | KeyCode::Esc => Action::Quit,
+                    KeyCode::Tab => Action::ScrollNextCategory,
+                    KeyCode::BackTab => Action::ScrollPreviousCategory,
+                    KeyCode::Down | KeyCode::Char('j') => Action::ScrollDown,
+                    KeyCode::Up | KeyCode::Char('k') => Action::ScrollUp,
+                    KeyCode::Char('a') => Action::ToggleAll,
+                    KeyCode::Char('s') => Action::ToggleOne,
+                    KeyCode::Char('d') => Action::CheckDocs,
+                    KeyCode::Char('c') => Action::CheckCratesIo,
+                    KeyCode::Char('f') => Action::ToggleShowFeatures,
+                    _ => Action::Tick,
+                }
+            } else {
+                Action::Tick
+            }
+        } else {
+            Action::Tick
+        }
+    } else {
+        Action::Tick
     }
 }

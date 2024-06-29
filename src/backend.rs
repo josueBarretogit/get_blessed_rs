@@ -1,7 +1,7 @@
+use crate::view::widgets::{CrateItemList, FeatureItemList, ItemListStatus};
 use strum::{Display, EnumIter, FromRepr};
 
-use crate::view::widgets::{CrateItemList, FeatureItemList, ItemListStatus};
-
+///This struct represent the data as seen in the actual page
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Crates {
@@ -31,7 +31,7 @@ impl From<crate::backend::Table> for Vec<CrateItemList> {
                     krate.name.clone(),
                     krate.description.clone(),
                     ItemListStatus::default(),
-                    krate.features.clone().map(|features| {
+                    krate.features.as_ref().map(|features| {
                         features
                             .iter()
                             .map(|feat| FeatureItemList::new(feat.clone()))
@@ -40,6 +40,9 @@ impl From<crate::backend::Table> for Vec<CrateItemList> {
                 ));
             }
         }
+        items.sort();
+
+        items.dedup();
 
         items
     }

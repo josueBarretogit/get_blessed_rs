@@ -1,22 +1,16 @@
+/// This module's job is to add de crate or dependencies to the user's project
 use std::fmt::Write;
-use std::{io, ops::Deref, process::Command};
-
+use std::{io, process::Command};
 use crate::view::widgets::{CrateItemList, ItemListStatus};
 
-pub mod dependency_builder;
 
+/// This is the data neccesary to add a crate to the user's project
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CrateToAdd {
     pub crate_name: String,
     pub features: Option<Vec<String>>,
 }
 
-impl Deref for CrateToAdd {
-    type Target = CrateToAdd;
-    fn deref(&self) -> &Self::Target {
-        self
-    }
-}
 
 impl From<CrateItemList> for CrateToAdd {
     fn from(value: CrateItemList) -> Self {
@@ -37,6 +31,29 @@ impl From<CrateItemList> for CrateToAdd {
         }
     }
 }
+
+
+
+impl From<&CrateItemList> for CrateToAdd {
+    fn from(value: &CrateItemList) -> Self {
+        Self {
+            crate_name: value.name.clone(),
+            features: value.features.as_ref().map(|features| {
+                features
+                    .iter()
+                    .filter_map(|feature_item| {
+                        if feature_item.status == ItemListStatus::Selected {
+                            Some(feature_item.name.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            }),
+        }
+    }
+}
+
 
 pub struct DependenciesBuilder {
     crates_to_add: Vec<CrateToAdd>,
