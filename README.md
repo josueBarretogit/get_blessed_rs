@@ -22,7 +22,6 @@ them to your rust projects right in your terminal.
 - Select a crate with features by pressing `<f>` (Opens a popup where you can select the features with `<s>`)
 - Add the selected crates to your rust project by pressing `<Enter>`
   
-![features](./public/features.gif)
 
 
 - After you are done press `<q>` or `<Esc>` to quit 

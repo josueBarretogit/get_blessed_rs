@@ -326,25 +326,6 @@ pub struct CratesListWidget {
     pub crates: Vec<CrateItemList>,
 }
 
-impl From<CrateItemList> for ListItem<'_> {
-    fn from(val: CrateItemList) -> Self {
-        let (is_selected, bg_color) = match val.status {
-            ItemListStatus::Selected => ("✓", tailwind::BLUE.c300),
-            ItemListStatus::Unselected => ("☐", Color::default()),
-        };
-
-        let line = Line::from(vec![
-            val.name.bold().blue(),
-            " ".into(),
-            val.description.into(),
-            " ".into(),
-            is_selected.into(),
-        ]);
-
-        ListItem::new(line).style(Style::default().bg(bg_color))
-    }
-}
-
 impl StatefulWidgetRef for CratesListWidget {
     type State = tui_widget_list::ListState;
     fn render_ref(&self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {

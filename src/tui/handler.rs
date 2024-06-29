@@ -1,4 +1,5 @@
 use core::panic;
+use std::env;
 use std::sync::Arc;
 use std::{error::Error, time::Duration};
 
@@ -123,12 +124,16 @@ pub fn update(app: &mut App, action: Action) {
             });
         }
         Action::FetchFeatures => {
+            let user_agent = format!(
+                "get-blessed/v{} ({} {} {})",
+                env!("CARGO_PKG_VERSION"),
+                env::consts::FAMILY,
+                env::consts::OS,
+                env::consts::ARCH
+            );
+
             let client = Arc::new(
-                crates_io_api::AsyncClient::new(
-                    "josuebarretogit (josuebarretogit@gmail.com)",
-                    Duration::from_millis(100),
-                )
-                .unwrap(),
+                crates_io_api::AsyncClient::new(&user_agent, Duration::from_millis(100)).unwrap(),
             );
 
             fetch_features(
